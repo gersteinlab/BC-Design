@@ -7,7 +7,7 @@ class PretrainESMIF_Model(nn.Module):
     def __init__(self):
         super(PretrainESMIF_Model, self).__init__()
         #  /root/.cache/torch/hub/checkpoints
-        model_data = torch.load("/gaozhangyang/model_zoom/transformers/esm_if/esm_if1_gvp4_t16_142M_UR50.pt")
+        model_data = torch.load("gaozhangyang/model_zoom/transformers/esm_if/esm_if1_gvp4_t16_142M_UR50.pt")
         self.model, self.alphabet = esm.pretrained.load_model_and_alphabet_core("esm_if1_gvp4_t16_142M_UR50", model_data, None)
     
     def forward(self, coords_list):

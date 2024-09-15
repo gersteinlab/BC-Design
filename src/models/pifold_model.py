@@ -27,7 +27,7 @@ class PiFold_Model(nn.Module):
         self.num_positional_embeddings = 16
 
         self.dihedral_type = args.dihedral_type
-        self.tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="/gaozhangyang/model_zoom/transformers")
+        self.tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers")
         alphabet = [one for one in 'ACDEFGHIKLMNPQRSTVWYX']
         self.token_mask = torch.tensor([(one in alphabet) for one in self.tokenizer._token_to_id.keys()])
         
@@ -131,6 +131,11 @@ class PiFold_Model(nn.Module):
     def forward(self, batch):
         h_V, h_P, P_idx, batch_id = batch['_V'], batch['_E'], batch['E_idx'], batch['batch_id']
         t1 = time.time()
+
+        # print("Input data type (h_V):", h_V.dtype)
+        # for name, param in self.node_embedding.named_parameters():
+        #     print(f"Parameter name: {name}, dtype: {param.dtype}")
+
         h_V = self.W_v(self.norm_nodes(self.node_embedding(h_V)))
         h_P = self.W_e(self.norm_edges(self.edge_embedding(h_P)))
         

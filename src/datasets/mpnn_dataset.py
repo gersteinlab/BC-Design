@@ -339,7 +339,7 @@ def safe_iter(ID, split_dict, params, alphabet_set, max_length=1000):
     return data
 
 class MPNNDataset(data.Dataset):
-    def __init__(self, data_path='/gaozhangyang/drug_dataset/proteinmpnn_data/pdb_2021aug02', rescut=3.5, split='train'):
+    def __init__(self, data_path='gaozhangyang/drug_dataset/proteinmpnn_data/pdb_2021aug02', rescut=3.5, split='train'):
         self.data_path = data_path
         self.rescut = rescut
         self.params = {
@@ -352,12 +352,12 @@ class MPNNDataset(data.Dataset):
             "HOMO"    : 0.70 #min seq.id. to detect homo chains
         }
         
-        if not os.path.exists("/gaozhangyang/experiments/OpenCPD/data/mpnn_data/split.pt"):
+        if not os.path.exists("gaozhangyang/experiments/OpenCPD/data/mpnn_data/split.pt"):
             train, valid, test = build_training_clusters(self.params, False)
             split = {"train": train, "valid":valid, "test":test}
-            torch.save(split, "/gaozhangyang/experiments/OpenCPD/data/mpnn_data/split.pt")
+            torch.save(split, "gaozhangyang/experiments/OpenCPD/data/mpnn_data/split.pt")
         else:
-            split = torch.load("/gaozhangyang/experiments/OpenCPD/data/mpnn_data/split.pt")
+            split = torch.load("gaozhangyang/experiments/OpenCPD/data/mpnn_data/split.pt")
         
         self.split_dict = split[mode]
         alphabet='ACDEFGHIKLMNPQRSTVWYX'

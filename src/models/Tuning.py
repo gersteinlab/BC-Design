@@ -48,7 +48,7 @@ class GNNTuning_Model(nn.Module):
         from transformers.models.esm.modeling_esm import EsmModel, EsmEmbeddings
         from transformers.models.esm.configuration_esm import EsmConfig
         
-        self.tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="/gaozhangyang/model_zoom/transformers")
+        self.tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers")
         config = EsmConfig(attention_probs_dropout_prob=0,
                            hidden_size=hidden_dim,
                            intermediate_size=1280,

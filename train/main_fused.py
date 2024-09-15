@@ -3,52 +3,80 @@ import os
 import sys
 sys.path.append(os.getcwd())
 os.environ["WANDB_API_KEY"] = "2ae9a362061d9366743c759a39692c9c647ca2b7"
+# Set environment variable for CUDA_LAUNCH_BLOCKING
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+# Set environment variable for device-side assertions
+os.environ["TORCH_USE_CUDA_DSA"] = "1"
+# Set CUDA_VISIBLE_DEVICES to only use GPU 1 and 2
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+# os.environ['NCCL_P2P_DISABLE'] = '1'
+
 import warnings
 warnings.filterwarnings("ignore")
 
 import argparse
-import pytorch_lightning as pl
 import torch
-from pytorch_lightning.trainer import Trainer
-import pytorch_lightning.callbacks as plc
-import pytorch_lightning.loggers as plog
 from model_interface import MInterface
 from data_interface import DInterface
 from src.tools.logger import SetupCallback,BackupCodeCallback
 import math
 from shutil import ignore_patterns
 
+import pytorch_lightning as pl
+from pytorch_lightning.trainer import Trainer
+import pytorch_lightning.callbacks as plc
+import pytorch_lightning.loggers as plog
+from pytorch_lightning.strategies import DDPStrategy
+# import lightning.pytorch as pl
+# from lightning.pytorch.trainer import Trainer
+# import lightning.pytorch.callbacks as plc
+# import lightning.pytorch.loggers as plog
+# from lightning.pytorch.strategies import DDPStrategy
+torch.autograd.set_detect_anomaly(True)
+
 def create_parser():
     parser = argparse.ArgumentParser()
     # Set-up parameters
     parser.add_argument('--res_dir', default='./train/results', type=str)
-    parser.add_argument('--ex_name', default='debug5', type=str)
+    # parser.add_argument('--ex_name', default='SurfProPiFold', type=str)
+    parser.add_argument('--ex_name', default='SBC2-sum3-minlrdiv004-bs4-lr00001-epoch10', type=str)
+    # parser.add_argument('--ex_name', default='debug1', type=str)
     parser.add_argument('--check_val_every_n_epoch', default=1, type=int)
     
     
-    parser.add_argument('--dataset', default='CATH4.2') # AF2DB_dataset, CATH_dataset
-    parser.add_argument('--model_name', default='PiFold', choices=['StructGNN', 'GraphTrans', 'GVP', 'GCA', 'AlphaDesign', 'ESMIF', 'PiFold', 'ProteinMPNN', 'KWDesign', 'E3PiFold'])
-    parser.add_argument('--lr', default=0.001, type=float, help='Learning rate')
+    # parser.add_argument('--dataset', default='CATH4.2SurfProPiFold') # AF2DB_dataset, CATH_dataset
+    parser.add_argument('--dataset', default='CATH4.2SurfProPiFoldDense') # AF2DB_dataset, CATH_dataset
+    parser.add_argument('--model_name', default='SBC2Model', 
+        choices=['StructGNN', 'GraphTrans', 'GVP', 'GCA', 'AlphaDesign', 'ESMIF', 'PiFold', 
+                 'ProteinMPNN', 'KWDesign', 'E3PiFold', 'SurfProPiFold', 'SurfProPiFoldSurfaceOnly',
+                 'SurfProPiFoldDense', 'TestModel0831', 'TestModel0904', 'TestModel0907',
+                 'SBModel', 'SBCModel', 'SBC2Model'])
+    parser.add_argument('--lr', default=0.0001, type=float, help='Learning rate')
+    # parser.add_argument('--lr', default=0.0005, type=float, help='Learning rate')
     parser.add_argument('--lr_scheduler', default='onecycle')
     parser.add_argument('--offline', default=0, type=int)
     parser.add_argument('--seed', default=111, type=int)
     
     # dataset parameters
-    # parser.add_argument('--batch_size', default=32, type=int)
-    parser.add_argument('--batch_size', default=8, type=int)
-    parser.add_argument('--num_workers', default=12, type=int)
+    parser.add_argument('--batch_size', default=2, type=int)
+    parser.add_argument('--num_workers', default=0, type=int)
+    # parser.add_argument('--num_workers', default=4, type=int)
     parser.add_argument('--pad', default=1024, type=int)
     parser.add_argument('--min_length', default=40, type=int)
     parser.add_argument('--data_root', default='./data/')
     
     # Training parameters
-    parser.add_argument('--epoch', default=20, type=int, help='end epoch')
+    parser.add_argument('--epoch', default=10, type=int, help='end epoch')
     parser.add_argument('--augment_eps', default=0.0, type=float, help='noise level')
 
     # Model parameters
     parser.add_argument('--use_dist', default=1, type=int)
     parser.add_argument('--use_product', default=0, type=int)
-    
+
+    # Checkpoint parameter
+    # parser.add_argument('--checkpoint_path', default='./train/results/SurfProPiFold/checkpoints/last.ckpt', type=str, help='Path to a checkpoint to resume training')
+    parser.add_argument('--checkpoint_path', default=None, type=str, help='Path to a checkpoint to resume training')
+
     args = parser.parse_args()
     return args
 
@@ -103,7 +131,6 @@ if __name__ == "__main__":
     args = create_parser()
     pl.seed_everything(args.seed)
     
-    
     data_module = DInterface(**vars(args))
     data_module.setup()
     
@@ -114,19 +141,24 @@ if __name__ == "__main__":
 
     model = MInterface(**vars(args))
 
+    # ddp = DDPStrategy(process_group_backend="gloo")
     
     trainer_config = {
         # 'gpus': -1,  # Use all available GPUs
-        'devices': 2,
+        'devices': gpu_count,
         'max_epochs': args.epoch,  # Maximum number of epochs to train for
         'num_nodes': 1,  # Number of nodes to use for distributed training
-        "strategy": 'deepspeed_stage_2', # 'ddp', 'deepspeed_stage_2
+        # "strategy": 'deepspeed_stage_2', # 'ddp', 'deepspeed_stage_2
+        "strategy": 'ddp_find_unused_parameters_true',
+        # "strategy": FSDPStrategy(),
+        # "strategy": ddp,
         # "precision": 'bf16', # "bf16", 16
         'precision': 32,
         'accelerator': 'gpu',  # Use distributed data parallel
         'callbacks': load_callbacks(args),
         'logger': plog.WandbLogger(
-                    project = 'E3PiFold',
+                    # project = 'SurfProPiFold',
+                    project = 'SurfProPiFoldDense',
                     name=args.ex_name,
                     save_dir=str(os.path.join(args.res_dir, args.ex_name)),
                     offline = args.offline,
@@ -140,6 +172,11 @@ if __name__ == "__main__":
     trainer_dict = vars(trainer_opt)
     trainer = Trainer(**trainer_dict)
     
-    trainer.fit(model, data_module)
+    # trainer.fit(model, data_module)
+    # Use resume_from_checkpoint directly in the fit method
+    if args.checkpoint_path:
+        trainer.fit(model, data_module, ckpt_path=args.checkpoint_path)
+    else:
+        trainer.fit(model, data_module)
     
     print(trainer_config)

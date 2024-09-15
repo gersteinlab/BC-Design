@@ -87,7 +87,7 @@ class MemoESMIF(nn.Module):
 
 if __name__ == '__main__': 
     
-    # work_space = '/gaozhangyang/experiments/PiFoldV2/data/mmseq_workspace2'
+    # work_space = 'gaozhangyang/experiments/PiFoldV2/data/mmseq_workspace2'
     # target_seqs = ["MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPQTKTYFPHFDLSHGSAQVKGHG", "MVHLTPEEKSAVTALWGKVNVDEVGVEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKV",
     #  "MVLSPADKTNVKAAWGKVGAGGAEALERMFLSFPQKTYYTYFPHFDLSHGSAQVKGHG"]
 

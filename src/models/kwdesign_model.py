@@ -57,8 +57,8 @@ class Design_Model(nn.Module):
         self.design_model = design_model
         self.LM_model = LM_model
         self.ESMIF_model = ESMIF_model
-        # self.GNNTuning = GNNTuning_Model(num_encoder_layers=tunning_layers_n, hidden_dim=tunning_layers_dim, input_design_dim=input_design_dim, input_esm_dim=input_esm_dim, dropout = tunning_dropout)
-        self.GNNTuning = MemoTuning(args, tunning_layers_n, tunning_layers_dim, input_design_dim, input_esm_dim, tunning_dropout, tokenizer=self.LM_model.tokenizer)
+        
+        self.GNNTuning = GNNTuning_Model(num_encoder_layers=tunning_layers_n, hidden_dim=tunning_layers_dim, input_design_dim=input_design_dim, input_esm_dim=input_esm_dim, dropout = tunning_dropout)
         # self.Predictor = nn.Linear(tunning_layers_dim, 21)
         self.conf_max = 0
         self.patience = 0

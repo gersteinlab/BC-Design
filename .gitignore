@@ -116,6 +116,8 @@ bash
 data
 data_set
 results/
+gaozhangyang/
+src/models/SurfPro/
 run.sh
 output/
 work_dirs/

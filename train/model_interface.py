@@ -6,6 +6,7 @@ import torch.nn as nn
 import os
 from torcheval.metrics.text import Perplexity
 from src.interface.model_interface import MInterface_base
+from src.models.MemoryPiFold import MemoPiFold_model
 import math
 import torch.nn.functional as F
 from omegaconf import OmegaConf
@@ -37,6 +38,14 @@ class MInterface(MInterface_base):
             if self.hparams.model_name == 'AlphaDesign':
                 loss += self.cross_entropy(results['log_probs0'], batch['S'])
             loss = (loss*mask).sum()/(mask.sum())
+
+        if self.hparams.model_name == 'SBCModel':
+            contrastive_loss = results['contrastive_loss']
+            loss += contrastive_loss
+            # loss = 0.5 * loss + 0.5 * contrastive_loss
+        if self.hparams.model_name == 'SBC2Model':
+            contrastive_loss = results['contrastive_loss']
+            loss += contrastive_loss
         
         cmp = log_probs.argmax(dim=-1)==batch['S']
         recovery = (cmp*mask).sum()/(mask.sum())
@@ -134,11 +143,59 @@ class MInterface(MInterface_base):
 
         if self.hparams.model_name == 'KWDesign':
             from src.models.kwdesign_model import Design_Model
-            self.model = Design_Model(params)
+            params['design_model'] = MemoPiFold_model(params)
+            # self.model = Design_Model(params)
+            self.model = Design_Model(
+                params,
+                temporature=params['temporature'],
+                msa_n=params['msa_n'],
+                tunning_layers_n=params['tunning_layers_n'],
+                tunning_layers_dim=params['tunning_layers_dim'],
+                input_design_dim=params['input_design_dim'],
+                input_esm_dim=params['input_esm_dim'],
+                tunning_dropout=params['tunning_dropout'],
+                design_model=params['design_model'],
+                LM_model=params['LM_model'],
+                ESMIF_model=params['ESMIF_model'],
+            )
         
         if self.hparams.model_name == 'E3PiFold':
             from src.models.E3PiFold_model import E3PiFold
             self.model = E3PiFold(params)
+
+        if self.hparams.model_name == 'SurfProPiFold':
+            from src.models.surfpropifold_model import SurfProPiFold_Model
+            self.model = SurfProPiFold_Model(params)
+
+        if self.hparams.model_name == 'SurfProPiFoldSurfaceOnly':
+            from src.models.surfpropifold_model import SurfProPiFoldSurfaceOnly_Model
+            self.model = SurfProPiFoldSurfaceOnly_Model(params)
+
+        if self.hparams.model_name == 'SurfProPiFoldDense':
+            from src.models.surfpropifold_model import SurfProPiFoldDense_Model
+            self.model = SurfProPiFoldDense_Model(params)
+
+        if self.hparams.model_name == 'TestModel0831':
+            from src.models.test_models import TestModel0831
+            self.model = TestModel0831(params)
+
+        if self.hparams.model_name == 'TestModel0904':
+            from src.models.test_models import TestModel0904
+            self.model = TestModel0904(params)
+
+        if self.hparams.model_name == 'TestModel0907':
+            from src.models.test_models import TestModel0907
+            self.model = TestModel0907(params)
+
+        if self.hparams.model_name == 'SBModel':
+            from src.models.SB_model import SBModel
+            self.model = SBModel(params)
+        if self.hparams.model_name == 'SBCModel':
+            from src.models.SBC_model import SBCModel
+            self.model = SBCModel(params)
+        if self.hparams.model_name == 'SBC2Model':
+            from src.models.SBC2_model import SBC2Model
+            self.model = SBC2Model(params)
 
     def instancialize(self, Model, **other_args):
         """ Instancialize a model using the corresponding parameters

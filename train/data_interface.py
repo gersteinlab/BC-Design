@@ -51,7 +51,8 @@ class DInterface(DInterface_base):
 
     def setup(self, stage=None):
         from src.datasets.featurizer import (featurize_AF, featurize_GTrans, featurize_GVP,
-                         featurize_ProteinMPNN, featurize_Inversefolding)
+                         featurize_ProteinMPNN, featurize_Inversefolding, featurize_SurfProPiFold, featurize_TestModel0904,
+                         featurize_TestModel0907, featurize_SBModel, featurize_SBModel1, featurize_SBC2Model)
         if self.hparams.model_name in ['AlphaDesign', 'PiFold', 'KWDesign', 'GraphTrans', 'StructGNN', 'GCA', 'E3PiFold']:
             self.collate_fn = featurize_GTrans
         elif self.hparams.model_name == 'GVP':
@@ -61,24 +62,40 @@ class DInterface(DInterface_base):
             self.collate_fn = featurize_ProteinMPNN
         elif self.hparams.model_name == 'ESMIF':
             self.collate_fn = featurize_Inversefolding
+        elif self.hparams.model_name == 'SurfProPiFold' or self.hparams.model_name == 'SurfProPiFoldSurfaceOnly' or self.hparams.model_name == 'SurfProPiFoldDense' or self.hparams.model_name == 'TestModel0831':
+            self.collate_fn = featurize_SurfProPiFold
+        elif self.hparams.model_name == 'TestModel0904':
+            self.collate_fn = featurize_TestModel0904   
+        elif self.hparams.model_name == 'TestModel0907':
+            self.collate_fn = featurize_TestModel0907  
+        elif self.hparams.model_name == 'SBModel':
+            self.collate_fn = featurize_SBModel       
+            # self.collate_fn = featurize_SBModel1
+        elif self.hparams.model_name == 'SBCModel':
+            self.collate_fn = featurize_SBModel
+        elif self.hparams.model_name == 'SBC2Model':
+            self.collate_fn = featurize_SBC2Model
     
         # Assign train/val datasets for use in dataloaders
         if stage == 'fit' or stage is None:
             self.trainset = self.instancialize(split = 'train')
             self.valset = self.instancialize(split='valid')
-
+    
         # Assign test dataset for use in dataloader(s)
         if stage == 'test' or stage is None:
             self.testset = self.instancialize(split='test')
 
     def train_dataloader(self):
-        return MyDataLoader(self.trainset, model_name=self.hparams.model_name, batch_size=self.batch_size, num_workers=self.hparams.num_workers, shuffle=True, prefetch_factor=8, pin_memory=True, collate_fn=self.collate_fn)
+        return MyDataLoader(self.trainset, model_name=self.hparams.model_name, batch_size=self.batch_size, num_workers=self.hparams.num_workers, shuffle=True, prefetch_factor=None, pin_memory=True, collate_fn=self.collate_fn)
+        # return MyDataLoader(self.trainset, model_name=self.hparams.model_name, batch_size=self.batch_size, num_workers=self.hparams.num_workers, shuffle=True, prefetch_factor=8, pin_memory=True, collate_fn=self.collate_fn)
 
     def val_dataloader(self):
-        return MyDataLoader(self.valset, model_name=self.hparams.model_name, batch_size=self.batch_size, num_workers=self.hparams.num_workers, shuffle=False, pin_memory=True, collate_fn=self.collate_fn)
+        return MyDataLoader(self.valset, model_name=self.hparams.model_name, batch_size=self.batch_size, num_workers=self.hparams.num_workers, shuffle=False, prefetch_factor=None, pin_memory=True, collate_fn=self.collate_fn)
+        # return MyDataLoader(self.valset, model_name=self.hparams.model_name, batch_size=self.batch_size, num_workers=self.hparams.num_workers, shuffle=False, pin_memory=True, collate_fn=self.collate_fn)
 
     def test_dataloader(self):
-        return MyDataLoader(self.testset, model_name=self.hparams.model_name, batch_size=self.batch_size, num_workers=self.hparams.num_workers, shuffle=False, pin_memory=True, collate_fn=self.collate_fn)
+        return MyDataLoader(self.testset, model_name=self.hparams.model_name, batch_size=self.batch_size, num_workers=self.hparams.num_workers, shuffle=False, prefetch_factor=None, pin_memory=True, collate_fn=self.collate_fn)
+        # return MyDataLoader(self.testset, model_name=self.hparams.model_name, batch_size=self.batch_size, num_workers=self.hparams.num_workers, shuffle=False, pin_memory=True, collate_fn=self.collate_fn)
 
     def load_data_module(self):
         name = self.hparams.dataset
@@ -112,6 +129,19 @@ class DInterface(DInterface_base):
             from src.datasets.mpnn_dataset import MPNNDataset
             self.data_module = MPNNDataset
 
+        if name == 'CATH4.2SurfProPiFold':
+            from src.datasets.cath_dataset import CATHDatasetSurfProPiFold
+            self.data_module = CATHDatasetSurfProPiFold
+            self.hparams['version'] = 4.2
+            self.hparams['path'] = osp.join(self.hparams.data_root, 'cath4.2surfpropifold')
+            # self.hparams['path'] = osp.join(self.hparams.data_root, 'cath4.2surfpropifold-connection')
+
+        if name == 'CATH4.2SurfProPiFoldDense':
+            from src.datasets.cath_dataset import CATHDatasetSurfProPiFoldDenseLarge
+            self.data_module = CATHDatasetSurfProPiFoldDenseLarge
+            self.hparams['version'] = 4.2
+            self.hparams['path'] = osp.join(self.hparams.data_root, 'cath4.2surfpropifold-dense')
+
     def instancialize(self, **other_args):
         """ Instancialize a model using the corresponding parameters
             from self.hparams dictionary. You can also input any args
@@ -125,4 +155,5 @@ class DInterface(DInterface_base):
             if arg in inkeys:
                 args1[arg] = self.hparams[arg]
         args1.update(other_args)
+        # print('finish instancialize')
         return self.data_module(**args1)
