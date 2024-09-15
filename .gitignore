@@ -108,6 +108,7 @@ venv.bak/
 .idea
 
 # custom
+/data.tar.gz
 *.pkl
 *.pkl.json
 *.log.json
