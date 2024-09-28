@@ -40,3 +40,4 @@ act_type: silu
 num_decoder_layers2: 3
 kernel_size2: 3
 glu: 0
+gt_layers: 3

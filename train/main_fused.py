@@ -39,7 +39,7 @@ def create_parser():
     # Set-up parameters
     parser.add_argument('--res_dir', default='./train/results', type=str)
     # parser.add_argument('--ex_name', default='SurfProPiFold', type=str)
-    parser.add_argument('--ex_name', default='SBC2-sum3-minlrdiv004-bs4-lr00001-epoch10', type=str)
+    parser.add_argument('--ex_name', default='SBC2-gtlayers4-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20', type=str)
     # parser.add_argument('--ex_name', default='debug1', type=str)
     parser.add_argument('--check_val_every_n_epoch', default=1, type=int)
     
@@ -51,7 +51,7 @@ def create_parser():
                  'ProteinMPNN', 'KWDesign', 'E3PiFold', 'SurfProPiFold', 'SurfProPiFoldSurfaceOnly',
                  'SurfProPiFoldDense', 'TestModel0831', 'TestModel0904', 'TestModel0907',
                  'SBModel', 'SBCModel', 'SBC2Model'])
-    parser.add_argument('--lr', default=0.0001, type=float, help='Learning rate')
+    parser.add_argument('--lr', default=0.0002, type=float, help='Learning rate')
     # parser.add_argument('--lr', default=0.0005, type=float, help='Learning rate')
     parser.add_argument('--lr_scheduler', default='onecycle')
     parser.add_argument('--offline', default=0, type=int)
@@ -66,7 +66,7 @@ def create_parser():
     parser.add_argument('--data_root', default='./data/')
     
     # Training parameters
-    parser.add_argument('--epoch', default=10, type=int, help='end epoch')
+    parser.add_argument('--epoch', default=20, type=int, help='end epoch')
     parser.add_argument('--augment_eps', default=0.0, type=float, help='noise level')
 
     # Model parameters
@@ -74,7 +74,7 @@ def create_parser():
     parser.add_argument('--use_product', default=0, type=int)
 
     # Checkpoint parameter
-    # parser.add_argument('--checkpoint_path', default='./train/results/SurfProPiFold/checkpoints/last.ckpt', type=str, help='Path to a checkpoint to resume training')
+    # parser.add_argument('--checkpoint_path', default='./train/results/ablat-v-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/last.ckpt', type=str, help='Path to a checkpoint to resume training')
     parser.add_argument('--checkpoint_path', default=None, type=str, help='Path to a checkpoint to resume training')
 
     args = parser.parse_args()

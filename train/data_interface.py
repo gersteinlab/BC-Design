@@ -142,6 +142,16 @@ class DInterface(DInterface_base):
             self.hparams['version'] = 4.2
             self.hparams['path'] = osp.join(self.hparams.data_root, 'cath4.2surfpropifold-dense')
 
+        if name == 'TS50':
+            from src.datasets.ts_dataset  import TS50Dataset
+            self.data_module = TS50Dataset
+            self.hparams['path'] = osp.join(self.hparams.data_root, 'ts50')
+
+        if name == 'TS500':
+            from src.datasets.ts_dataset  import TS500Dataset
+            self.data_module = TS500Dataset
+            self.hparams['path'] = osp.join(self.hparams.data_root, 'ts500')
+
     def instancialize(self, **other_args):
         """ Instancialize a model using the corresponding parameters
             from self.hparams dictionary. You can also input any args

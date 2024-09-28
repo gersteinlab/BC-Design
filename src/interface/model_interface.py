@@ -44,7 +44,7 @@ class MInterface_base(pl.LightningModule):
         elif lr_scheduler == 'onecycle':
             scheduler = lrs.OneCycleLR(optimizer, max_lr=self.hparams.lr, steps_per_epoch=self.hparams.steps_per_epoch, epochs=self.hparams.epoch, three_phase=False,
                                     #    pct_start=0.5, div_factor=10
-                                      final_div_factor=0.04,
+                                      final_div_factor=1.,
                                        )
         else:
             raise ValueError('Invalid lr_scheduler type!')

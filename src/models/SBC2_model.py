@@ -179,9 +179,9 @@ class PointCloudMessagePassing(nn.Module):
 
 
 
-class GraphTransformerModel(nn.Module):
+class GraphTransformerModelShare(nn.Module):
     def __init__(self, hidden_dim, n_layers, n_heads, dropout=0.):
-        super(GraphTransformerModel, self).__init__()
+        super(GraphTransformerModelShare, self).__init__()
         
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
@@ -364,6 +364,190 @@ class GraphTransformerModel(nn.Module):
 
 
 
+class GraphTransformerModel(nn.Module):
+    def __init__(self, hidden_dim, n_layers, n_heads, dropout=0.):
+        super(GraphTransformerModel, self).__init__()
+        
+        self.hidden_dim = hidden_dim
+        self.n_layers = n_layers
+        self.n_heads = n_heads
+        self.dropout = dropout
+        
+        # CLS token for structural features
+        self.struct_cls_token = nn.Parameter(torch.zeros(1 + 8, hidden_dim))
+
+        # Linear projections for multi-head attention (one set per layer)
+        self.query_proj = nn.ModuleList([nn.Linear(hidden_dim, hidden_dim) for _ in range(n_layers)])
+        self.key_proj = nn.ModuleList([nn.Linear(hidden_dim, hidden_dim) for _ in range(n_layers)])
+        self.value_proj = nn.ModuleList([nn.Linear(hidden_dim, hidden_dim) for _ in range(n_layers)])
+        self.out_proj = nn.ModuleList([nn.Linear(hidden_dim, hidden_dim) for _ in range(n_layers)])
+        
+        # Layer normalization and dropout (one set per layer)
+        self.layer_norm = nn.ModuleList([nn.LayerNorm(hidden_dim) for _ in range(n_layers)])
+        self.dropout_layer = nn.ModuleList([nn.Dropout(dropout) for _ in range(n_layers)])
+
+        # Feed-Forward Network (FFN) (one per layer)
+        self.ffn = nn.ModuleList([
+            nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim * 4),
+                nn.ReLU(),
+                nn.Linear(hidden_dim * 4, hidden_dim),
+            ) for _ in range(n_layers)
+        ])
+
+        # Layer normalization for the FFN block (one per layer)
+        self.layer_norm_ffn = nn.ModuleList([nn.LayerNorm(hidden_dim) for _ in range(n_layers)])
+        
+        # MLP for node embeddings
+        self.node_mlp = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU()
+        )
+        
+        # MLP for edge weights (converts _E into 1D edge weights)
+        self.edge_mlp = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+            nn.Linear(hidden_dim // 2, 1)  # 1D output for edge weights
+        )
+    
+    def forward(self, _V, _E, batch):
+        # Unpack batch
+        batch_id, E_idx, correspondences = batch['batch_id'], batch['E_idx'], batch['correspondences']
+        inv_distance_matrices = batch['inv_distance_matrices']
+        heat_kernel_pe = batch['heat_kernel_pe']
+        padding_mask = batch['unflattened_mask'].bool()  # Shape: (B, max_nodes)
+
+        B = len(batch_id.unique())  # Batch size
+        max_nodes = inv_distance_matrices.size(1)  # Max number of nodes in any graph in the batch
+
+        # Node embedding from _V using MLP
+        node_embeds = self.node_mlp(_V)  # Apply MLP to node features
+
+        # Add CLS token to node embeddings
+        cls_tokens = self.struct_cls_token.expand(B, -1, -1)  # Shape: (B, 1, hidden_dim)
+        padded_node_embeds = self._pad_and_stack(node_embeds, batch_id, max_nodes)  # Shape: (B, max_nodes, hidden_dim)
+        padded_node_embeds = torch.cat([cls_tokens, padded_node_embeds], dim=1)  # Add CLS token at the start
+
+        # Update max_nodes to account for CLS token
+        max_nodes += 1 + 8
+        
+        # Edge weight transformation from _E using MLP
+        edge_weights = self.edge_mlp(_E).squeeze(-1)  # Convert edge features to 1D weights
+        padded_edge_weights = self._pad_and_stack_edges(edge_weights, batch_id, E_idx, max_nodes, correspondences)  # Shape: (B, max_nodes, max_nodes)
+
+        # Apply MHA layers for n_layers
+        for layer_idx in range(self.n_layers):
+            padded_node_embeds = self.multi_head_attention(
+                padded_node_embeds, inv_distance_matrices, heat_kernel_pe, padded_edge_weights, padding_mask, layer_idx
+            )
+        
+        return padded_node_embeds
+
+    def multi_head_attention(self, node_embeds, inv_distance_matrices, heat_kernel_pe, transformed_edge_weights, padding_mask, layer_idx):
+        # Batch size and max_nodes
+        B, max_nodes, _ = node_embeds.size()
+        d_k = self.hidden_dim // self.n_heads  # Dimension per head
+
+        # Linear projections for Q, K, V
+        Q = self.query_proj[layer_idx](node_embeds)  # (B, max_nodes, hidden_dim)
+        K = self.key_proj[layer_idx](node_embeds)    # (B, max_nodes, hidden_dim)
+        V = self.value_proj[layer_idx](node_embeds)  # (B, max_nodes, hidden_dim)
+
+        # Reshape Q, K, V for multi-head attention: (B, n_heads, max_nodes, d_k)
+        Q = Q.view(B, max_nodes, self.n_heads, d_k).transpose(1, 2)  # (B, n_heads, max_nodes, d_k)
+        K = K.view(B, max_nodes, self.n_heads, d_k).transpose(1, 2)  # (B, n_heads, max_nodes, d_k)
+        V = V.view(B, max_nodes, self.n_heads, d_k).transpose(1, 2)  # (B, n_heads, max_nodes, d_k)
+
+        # Scaled dot-product attention: (QK^T / sqrt(d_k))
+        attn_scores = torch.matmul(Q, K.transpose(-2, -1)) / (d_k ** 0.5)  # (B, n_heads, max_nodes, max_nodes)
+
+        # Add inv_distance_matrices and heat_kernel_pe to attention scores
+        # Add 0th row and column to heat_kernel_pe
+        heat_kernel_pe = F.pad(heat_kernel_pe, (1 + 8, 0, 1 + 8, 0), "constant", 0)
+        
+        attn_scores = attn_scores * transformed_edge_weights.unsqueeze(1) + heat_kernel_pe.unsqueeze(1)
+        attn_scores = torch.where(transformed_edge_weights.unsqueeze(1) == 0, -1e9, attn_scores)
+
+        # Apply padding mask (set scores to a large negative value where padding mask is False)
+        if padding_mask is not None:
+            padding_mask = F.pad(padding_mask, (1 + 8, 0), "constant", 1)  # Pad to include CLS token
+            padding_mask = padding_mask.unsqueeze(1).unsqueeze(2)  # Shape: (B, 1, 1, max_nodes)
+            attn_scores = attn_scores.masked_fill(~padding_mask, -1e9)  # Mask padded positions with large negative value
+
+        # Apply softmax to get attention probabilities
+        attn_probs = F.softmax(attn_scores, dim=-1)
+
+        # Compute the final weighted values
+        attn_output = torch.matmul(attn_probs, V)  # (B, n_heads, max_nodes, d_k)
+
+        # Concatenate heads and project the result back to hidden_dim
+        attn_output = attn_output.transpose(1, 2).contiguous().view(B, max_nodes, self.hidden_dim)  # (B, max_nodes, hidden_dim)
+        attn_output = self.out_proj[layer_idx](attn_output)
+
+        # Apply dropout and residual connection for attention output
+        attn_output = self.dropout_layer[layer_idx](attn_output)
+        attn_output = attn_output + node_embeds  # Residual connection for attention
+        attn_output = self.layer_norm[layer_idx](attn_output)  # Layer normalization for attention output
+
+        # Apply Feed-Forward Network (FFN) + residual connection + layer normalization
+        ffn_output = self.ffn[layer_idx](attn_output)  # Feed-Forward network
+        ffn_output = self.dropout_layer[layer_idx](ffn_output)  # Dropout after FFN
+        ffn_output = ffn_output + attn_output  # Residual connection for FFN
+        ffn_output = self.layer_norm_ffn[layer_idx](ffn_output)  # Layer normalization for FFN output
+
+        return ffn_output
+
+    def _pad_and_stack(self, features, batch_id, max_nodes):
+        """Pad and stack node features to include CLS token."""
+        B = batch_id.max().item() + 1  # Batch size
+        padded = torch.zeros((B, max_nodes, self.hidden_dim), device=features.device)
+        
+        for i in range(B):
+            node_indices = (batch_id == i).nonzero(as_tuple=True)[0]
+            padded[i, :len(node_indices), :] = features[node_indices]
+        
+        return padded
+
+    def _pad_and_stack_edges(self, edge_weights, batch_id, E_idx, max_nodes, correspondences):
+        """Pad and stack edges to include interactions for CLS tokens."""
+        B = batch_id.max().item() + 1  # Batch size
+        padded_edges = torch.zeros((B, max_nodes, max_nodes), device=edge_weights.device)
+
+        for i in range(B):
+            node_indices = (batch_id == i).nonzero(as_tuple=True)[0]
+            min_node_id = node_indices.min().item()
+
+            src, dst = E_idx[0, :], E_idx[1, :]
+            local_edges_mask = (src >= min_node_id) & (src < min_node_id + node_indices.size(0))
+
+            src_local = src[local_edges_mask] - min_node_id
+            dst_local = dst[local_edges_mask] - min_node_id
+
+            # Fill interactions for global CLS token (0th row/column)
+            padded_edges[i, 0, 1:len(node_indices) + 1] = 1  # CLS -> Nodes
+            padded_edges[i, 1:len(node_indices) + 1, 0] = 1  # Nodes -> CLS
+
+            # Vectorized filling for subarea CLS tokens (1st to 8th rows/columns)
+            ca_neighbors_list = [ca_neighbors + 1 + 8 for ca_neighbors, _ in correspondences[i]]  # Shifted CA neighbors
+            subarea_idx = torch.arange(1, 1 + 8, device=padded_edges.device)  # Subarea indices 1 to 8
+
+            # Create a tensor from the list of CA neighbors
+            ca_neighbors_tensor = torch.cat(ca_neighbors_list).long()
+            subarea_repeats = torch.repeat_interleave(subarea_idx, torch.tensor([len(ca) for ca in ca_neighbors_list], device=padded_edges.device))
+
+            # Assign values to the subarea CLS -> CA neighbors
+            padded_edges[i, subarea_repeats, ca_neighbors_tensor] = 1  # Subarea CLS -> CA Neighbors
+            padded_edges[i, ca_neighbors_tensor, subarea_repeats] = 1  # CA Neighbors -> Subarea CLS
+
+            # Fill the rest of the edges (adjusted for the shifted indices)
+            padded_edges[i, src_local + 1 + 8, dst_local + 1 + 8] = edge_weights[local_edges_mask]
+            padded_edges[i, dst_local + 1 + 8, src_local + 1 + 8] = edge_weights[local_edges_mask]  # Assuming undirected edges
+
+        return padded_edges
+
 
 
 class PositionalEncoding(nn.Module):
@@ -467,7 +651,8 @@ class SBC2Model(nn.Module):
         self.W_e = nn.Linear(edge_features, hidden_dim, bias=True) 
         self.W_f = nn.Linear(edge_features, hidden_dim, bias=True)
 
-        self.encoder = GraphTransformerModel(hidden_dim=hidden_dim, n_layers=3, n_heads=8)
+        # self.encoder = GraphTransformerModel(hidden_dim=hidden_dim, n_layers=self.args.gt_layers, n_heads=8)
+        self.encoder = GraphTransformerModelShare(hidden_dim=hidden_dim, n_layers=self.args.gt_layers, n_heads=8)
 
         l_max = 2
         num_scales = 4
@@ -553,6 +738,7 @@ class SBC2Model(nn.Module):
         decoder_output = self.transformer_decoder(
             h_V_unflattened, h_surface, 
             tgt_key_padding_mask=target_padding_mask, 
+            # ablation
             memory_mask=ss_connection_mask
         )
 
@@ -865,6 +1051,10 @@ class SBC2Model(nn.Module):
         sparse_idx = mask.nonzero()  # index of non-zero values
         X = X[sparse_idx[:,0], sparse_idx[:,1], :, :]
         batch_id = sparse_idx[:,0]
+
+        # ablation
+        # _E = torch.randn_like(_E)
+        # _V = torch.randn_like(_V)
 
         unflattened_mask = mask
         mask = torch.masked_select(mask, mask_bool)
