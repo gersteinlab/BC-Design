@@ -27,6 +27,7 @@ import subprocess
 import requests
 import time
 import copy
+import pandas as pd
 
 tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers") # mask token: 32
 esmfold_tokenizer = AutoTokenizer.from_pretrained("facebook/esmfold_v1", cache_dir="cache/transformers/tokenizers")
@@ -335,7 +336,7 @@ def calculate_contact_order(gt_ca_coords, distance_threshold=8.0):
 
     # Contact order calculation
     if count > 0:
-        contact_order = total_distance / count
+        contact_order = total_distance / count / n
     else:
         contact_order = 0  # No contacts found
 
@@ -351,6 +352,19 @@ class MInterface(MInterface_base):
         os.makedirs(os.path.join(self.hparams.res_dir, self.hparams.ex_name), exist_ok=True)
 
         self.test_step_outputs = []
+
+        self.cath_classes = []  # CATH class partition
+        self.sequence_lengths = []  # Sequence length partition (≤100, 100–300, >300)
+        self.contact_orders = []  # Contact order for each protein
+
+        self.surface_recoveries = []
+        self.core_recoveries = []
+        self.surface_nssrs = []
+        self.core_nssrs = []
+
+        self.tmscores_cath42_82 = []
+        self.plddt_ca_cath42_82 = []
+        self.plddt_cath42_82 = []
 
         # Metrics for sequences with length ≤ 100
         self.recovery_len_100 = []
@@ -433,9 +447,6 @@ class MInterface(MInterface_base):
         self.hydrophobicity_rmsd_other = []  # New
         self.charge_rmsd_other = []          # New
 
-
-        self.contact_orders = []
-
         self.test_setupped = False
 
         self.esmfold_model = None
@@ -475,264 +486,6 @@ class MInterface(MInterface_base):
         return loss, recovery
 
 
-    # def test_forward(self, batch):
-    #     # Forward pass for test and additional metric calculations
-    #     batch = self.model._get_features(batch)
-    #     results = self.model(batch)
-    #     log_probs, mask = results['log_probs'], batch['mask']
-    #     batch_ids = batch['batch_id']
-
-    #     device = log_probs.device
-
-    #     # Convert mask to boolean for indexing
-    #     mask = mask > 0  # Convert mask to boolean (True where mask > 0)
-        
-    #     # Initialize lists to hold metrics for each sample
-    #     losses = []
-    #     recoveries = []
-    #     plddt_ca_list = []
-    #     plddt_list = []
-    #     rmsds = []
-    #     tmscores = []
-    #     nssr_scores = []  # To store NSSR scores for each sample
-
-    #     # Define directory to save the PDBs
-    #     pdb_save_directory = f"predicted_pdb/{self.hparams.ex_name}/{self.hparams.dataset}"
-    #     gt_pdb_save_directory = f"gt_pdb/{self.hparams.dataset}"
-
-    #     # Ensure the ground truth PDB directory exists
-    #     if not os.path.exists(gt_pdb_save_directory):
-    #         os.makedirs(gt_pdb_save_directory)
-
-    #     # Get the unique batch IDs (corresponding to different samples in the batch)
-    #     unique_batch_ids = torch.unique(batch_ids)
-
-    #     # Loop over each sample in the batch
-    #     for sample_id in unique_batch_ids:
-    #         # Get indices for the current sample
-    #         sample_mask = batch_ids == sample_id
-
-    #         # Apply the mask to get log_probs and ground truth S for this sample
-    #         log_probs_sample = log_probs[sample_mask]
-    #         mask_sample = mask[sample_mask]
-    #         S_sample = batch['S'][sample_mask]
-
-    #         # Further mask log_probs and S using the internal mask
-    #         log_probs_masked = log_probs_sample[mask_sample]
-    #         S_masked = S_sample[mask_sample]
-
-    #         S_masked_list = S_masked.tolist()
-    #         gt_tokens = tokenizer.convert_ids_to_tokens(S_masked_list, skip_special_tokens=True)  # Convert token IDs to tokens (amino acids or special tokens)
-    #         # Join tokens into a single string and remove any special tokens if needed
-    #         gt_amino_acid_sequence = "".join(gt_tokens)
-
-    #         # Loss calculation (use masked log_probs and S)
-    #         loss = self.cross_entropy(log_probs_masked, S_masked)
-    #         losses.append(loss.mean())  # Append the loss for this sample
-
-    #         # Recovery calculation (using the mask)
-    #         predicted_indices = log_probs_masked.argmax(dim=-1)
-    #         cmp = predicted_indices == S_masked
-    #         recovery = cmp.float().mean()
-    #         recoveries.append(recovery)  # Append the recovery metric
-
-    #         predicted_indices_list = predicted_indices.tolist()
-    #         pred_tokens = tokenizer.convert_ids_to_tokens(predicted_indices_list, skip_special_tokens=True)  # Convert token IDs to tokens (amino acids or special tokens)
-            
-    #         # Join tokens into a single string and remove any special tokens if needed
-    #         pred_amino_acid_sequence = "".join(pred_tokens)
-
-    #         # nssr
-    #         # BLOSUM62-based NSSR calculation
-    #         similar_pairs_count = 0
-    #         total_residues = len(gt_amino_acid_sequence)
-
-    #         # Loop through each pair of residues in the predicted and ground truth sequences
-    #         for gt_residue, pred_residue in zip(gt_amino_acid_sequence, pred_amino_acid_sequence):
-    #             # Check if BLOSUM62 score is greater than 0
-    #             if blosum62[gt_residue][pred_residue] > 0:
-    #                 similar_pairs_count += 1
-
-    #         # Calculate NSSR for the current sample
-    #         if total_residues > 0:
-    #             nssr_score = torch.tensor(similar_pairs_count / total_residues, device=device)
-    #             nssr_scores.append(nssr_score)
-
-    #         # Update perplexity for this sample
-    #         self.perplexity_metric.update(log_probs_masked.unsqueeze(1), S_masked.unsqueeze(1))
-
-    #         # Check if the PDB files already exist for the current sample
-    #         sample_title = batch['title'][sample_id]
-    #         existing_pdb = load_existing_pdbs([sample_title], pdb_save_directory)[0]
-    #         pred_pdb_path = os.path.join(pdb_save_directory, f"{sample_title}.pdb")
-    #         gt_pdb_path = os.path.join(gt_pdb_save_directory, f"{sample_title}.pdb")
-
-    #         # Check if the ground truth PDB exists
-    #         if not os.path.exists(gt_pdb_path):
-    #             # Create the ground truth PDB from batch['X'] and amino_acid_sequence
-    #             gt_coords = batch['X'][sample_mask][mask_sample].cpu().numpy()
-
-    #             # Create the protein data structure
-    #             protein_data = {
-    #                 'name': sample_title,
-    #                 'seq': gt_amino_acid_sequence,
-    #                 'coords': gt_coords
-    #             }
-    #             # Create the structure using the function provided
-    #             gt_structure = create_pdb_structure(protein_data)
-
-    #             # Save the structure to the ground truth PDB file
-    #             io = PDB.PDBIO()
-    #             io.set_structure(gt_structure)
-    #             io.save(gt_pdb_path)
-
-    #         if existing_pdb is None:
-    #             esmfold_inputs = esmfold_tokenizer([pred_amino_acid_sequence], return_tensors="pt", add_special_tokens=False)
-    #             for k, v in esmfold_inputs.items():
-    #                 esmfold_inputs[k] = v.to(device)
-    #             esmfold_outputs = self.esmfold_model(**esmfold_inputs)
-
-    #             # Convert outputs to PDB format and calculate pLDDT
-    #             pdb = convert_outputs_to_pdb(esmfold_outputs)[0]
-    #             # Save the newly generated PDB file
-    #             save_pdbs_to_files([pdb], [sample_title], pdb_save_directory)
-    #         else:
-    #             pdb = existing_pdb
-
-    #         tmp = calculate_average_plddt(pdb)
-    #         plddt_ca = torch.tensor(tmp['plddt_ca'], device=device)
-    #         plddt = torch.tensor(tmp['plddt'], device=device)
-
-    #         plddt_ca_list.append(plddt_ca)
-    #         plddt_list.append(plddt)
-
-    #         # rmsd
-    #         # Use StringIO to convert the PDB content (string) into a file-like object
-    #         pdb_io = StringIO(pdb)
-    #         parser = PDB.PDBParser(QUIET=True)
-    
-    #         # Parse the structure from the file-like object
-    #         pred_structure = parser.get_structure('structure', pdb_io)
-    #         pred_ca_atoms = get_ca_atoms_from_struc(pred_structure)
-
-    #         gt_ca_coords = batch['X'][sample_mask][mask_sample][:, 1, :].cpu().numpy()
-    #         gt_ca_atoms = create_atoms_from_coords(gt_ca_coords)
-
-    #         # Perform the alignment
-    #         super_imposer = Superimposer()
-    #         super_imposer.set_atoms(pred_ca_atoms, gt_ca_atoms)
-
-    #         # Calculate RMSD
-    #         rmsd = torch.tensor(super_imposer.rms, device=device)
-    #         rmsds.append(rmsd)
-
-    #         # tm-score
-    #         tmscore = torch.tensor(calculate_tm_score(pred_pdb_path, gt_pdb_path), device=device)
-    #         tmscores.append(tmscore)
-
-    #         # contact order
-    #         contact_order = calculate_contact_order(batch['X'][sample_mask][mask_sample][:, 1, :])
-    #         self.contact_orders.append(contact_order)
-
-    #         # metrics for different length
-    #         # Get the length of the ground truth sequence
-    #         seq_length = len(gt_tokens)
-
-    #         # Store metrics in corresponding length categories
-    #         if seq_length <= 100:
-    #             self.recovery_len_100.append(recovery)
-    #             self.plddt_ca_len_100.append(plddt_ca)
-    #             self.plddt_len_100.append(plddt)
-    #             self.rmsd_len_100.append(rmsd)
-    #             self.tmscore_len_100.append(tmscore)
-    #             self.nssr_len_100.append(nssr_score)
-    #         elif 100 < seq_length <= 300:
-    #             self.recovery_len_100_300.append(recovery)
-    #             self.plddt_ca_len_100_300.append(plddt_ca)
-    #             self.plddt_len_100_300.append(plddt)
-    #             self.rmsd_len_100_300.append(rmsd)
-    #             self.tmscore_len_100_300.append(tmscore)
-    #             self.nssr_len_100_300.append(nssr_score)
-    #         else:  # Length > 300
-    #             self.recovery_len_300.append(recovery)
-    #             self.plddt_ca_len_300.append(plddt_ca)
-    #             self.plddt_len_300.append(plddt)
-    #             self.rmsd_len_300.append(rmsd)
-    #             self.tmscore_len_300.append(tmscore)
-    #             self.nssr_len_300.append(nssr_score)
-
-    #         # different cath classes
-    #         # Get the CATH class for the protein based on the PDB ID
-    #         pdb_id = sample_title.replace('.', '')[:5]  # Remove '.' and get first 5 chars
-    #         cath_class = fetch_cath_class(pdb_id)
-
-    #         # Append the metrics to the appropriate list based on the CATH class
-    #         if cath_class == 'Alpha':
-    #             self.recovery_alpha.append(recovery)
-    #             self.plddt_ca_alpha.append(plddt_ca)
-    #             self.plddt_alpha.append(plddt)
-    #             self.rmsd_alpha.append(rmsd)
-    #             self.tmscore_alpha.append(tmscore)
-    #             self.nssr_alpha.append(nssr_score)
-    #         elif cath_class == 'Beta':
-    #             self.recovery_beta.append(recovery)
-    #             self.plddt_ca_beta.append(plddt_ca)
-    #             self.plddt_beta.append(plddt)
-    #             self.rmsd_beta.append(rmsd)
-    #             self.tmscore_beta.append(tmscore)
-    #             self.nssr_beta.append(nssr_score)
-    #         elif cath_class == 'AlphaBeta':
-    #             self.recovery_alpha_beta.append(recovery)
-    #             self.plddt_ca_alpha_beta.append(plddt_ca)
-    #             self.plddt_alpha_beta.append(plddt)
-    #             self.rmsd_alpha_beta.append(rmsd)
-    #             self.tmscore_alpha_beta.append(tmscore)
-    #             self.nssr_alpha_beta.append(nssr_score)
-    #         elif cath_class == 'FewSecondaryStructures':
-    #             self.recovery_few_secondary_structures.append(recovery)
-    #             self.plddt_ca_few_secondary_structures.append(plddt_ca)
-    #             self.plddt_few_secondary_structures.append(plddt)
-    #             self.rmsd_few_secondary_structures.append(rmsd)
-    #             self.tmscore_few_secondary_structures.append(tmscore)
-    #             self.nssr_few_secondary_structures.append(nssr_score)
-    #         else:  # 'Other' class
-    #             self.recovery_other.append(recovery)
-    #             self.plddt_ca_other.append(plddt_ca)
-    #             self.plddt_other.append(plddt)
-    #             self.rmsd_other.append(rmsd)
-    #             self.tmscore_other.append(tmscore)
-    #             self.nssr_other.append(nssr_score)
-
-    #         # residue-level metrics
-    #         gt_tokens_indices = torch.tensor([residue_to_index[residue] for residue in gt_tokens], device=device)
-    #         pred_tokens_indices = torch.tensor([residue_to_index[residue] for residue in pred_tokens], device=device)
-
-    #         # Multiclass classification metrics (all residues)
-    #         self.all_residue_accuracy.update(pred_tokens_indices, gt_tokens_indices)
-    #         self.all_residue_precision.update(pred_tokens_indices, gt_tokens_indices)
-    #         self.all_residue_recall.update(pred_tokens_indices, gt_tokens_indices)
-    #         self.all_residue_f1.update(pred_tokens_indices, gt_tokens_indices)
-
-    #         # Convert the ground truth and predicted tokens to NumPy arrays
-    #         gt_amino_acid_sequence = np.array(gt_tokens)  # Ground truth sequence as a NumPy array
-    #         pred_amino_acid_sequence = np.array(pred_tokens)  # Predicted sequence as a NumPy array
-
-    #         # Binary classification for each residue type
-    #         for residue_type in residue_types:
-    #             # Create binary arrays using vectorized comparison
-    #             gt_binary = torch.tensor((gt_amino_acid_sequence == residue_type).astype(int), device=device)
-    #             pred_binary = torch.tensor((pred_amino_acid_sequence == residue_type).astype(int), device=device)
-
-    #             # Update binary accuracy, precision, recall, F1 metrics for this residue type
-    #             self.binary_accuracies[residue_type].update(pred_binary, gt_binary)
-    #             self.binary_precisions[residue_type].update(pred_binary, gt_binary)
-    #             self.binary_recalls[residue_type].update(pred_binary, gt_binary)
-    #             self.binary_f1s[residue_type].update(pred_binary, gt_binary)
-
-    #     return (
-    #         losses, recoveries, plddt_ca_list, plddt_list, rmsds, tmscores, nssr_scores,
-    #     )
-
     def test_forward(self, batch):
         # Forward pass for test and additional metric calculations
         batch = self.model._get_features(batch)
@@ -754,8 +507,6 @@ class MInterface(MInterface_base):
         rmsds = []
         tmscores = []
         nssr_scores = []  # To store NSSR scores for each sample
-        surface_recoveries = []
-        core_recoveries = []
 
         # Initialize lists to store biochemical RMSDs
         hydrophobicity_rmsds = []
@@ -771,6 +522,7 @@ class MInterface(MInterface_base):
 
         # Get the unique batch IDs (corresponding to different samples in the batch)
         unique_batch_ids = torch.unique(batch_ids)
+        # print(unique_batch_ids)
 
         # Loop over each sample in the batch
         for sample_id in unique_batch_ids:
@@ -930,6 +682,16 @@ class MInterface(MInterface_base):
             tmscore = torch.tensor(calculate_tm_score(pred_pdb_path, gt_pdb_path), device=device)
             tmscores.append(tmscore)
 
+            # tm-score on cath 4.2 82
+            cath_42_82_df = pd.read_excel('./cath_test_82/CATH42_82.xlsx')
+            cath_42_82_name_list = cath_42_82_df['name'].tolist()
+            # Add a '.' to the 4th position of each string
+            cath_42_82_name_list = [name[:4] + '.' + name[4:] for name in cath_42_82_name_list]
+            if sample_title in cath_42_82_name_list:
+                self.tmscores_cath42_82.append(tmscore)
+                self.plddt_ca_cath42_82.append(plddt_ca)
+                self.plddt_cath42_82.append(plddt)
+
             # recovery for surface/core region
             # 1. 解析 PDB 文件
             parser = PDB.PDBParser()
@@ -962,10 +724,35 @@ class MInterface(MInterface_base):
             core_S_masked = S_masked[core_residues]
             cmp = surface_predicted_indices == surface_S_masked
             surface_recovery = cmp.float().mean()
-            surface_recoveries.append(surface_recovery)
+            if not torch.isnan(surface_recovery):
+                self.surface_recoveries.append(surface_recovery)
             cmp = core_predicted_indices == core_S_masked
             core_recovery = cmp.float().mean()
-            core_recoveries.append(core_recovery)
+            if not torch.isnan(core_recovery):
+                self.core_recoveries.append(core_recovery)
+
+            # nssr for surface/core region
+            surface_similar_pairs_count = 0
+            # Loop through each pair of residues in the predicted and ground truth sequences
+            for gt_residue, pred_residue in zip([gt_amino_acid_sequence[r] for r in surface_residues], [pred_amino_acid_sequence[r] for r in surface_residues]):
+                # Check if BLOSUM62 score is greater than 0
+                if blosum62[gt_residue][pred_residue] > 0:
+                    surface_similar_pairs_count += 1
+            # Calculate NSSR for the current sample
+            if len(surface_residues) > 0:
+                nssr_score = torch.tensor(surface_similar_pairs_count / len(surface_residues), device=device)
+                self.surface_nssrs.append(nssr_score)
+
+            core_similar_pairs_count = 0
+            # Loop through each pair of residues in the predicted and ground truth sequences
+            for gt_residue, pred_residue in zip([gt_amino_acid_sequence[r] for r in core_residues], [pred_amino_acid_sequence[r] for r in core_residues]):
+                # Check if BLOSUM62 score is greater than 0
+                if blosum62[gt_residue][pred_residue] > 0:
+                    core_similar_pairs_count += 1
+            # Calculate NSSR for the current sample
+            if len(core_residues) > 0:
+                nssr_score = torch.tensor(core_similar_pairs_count / len(core_residues), device=device)
+                self.core_nssrs.append(nssr_score)
 
             # contact order
             contact_order = calculate_contact_order(batch['X'][sample_mask][mask_sample][:, 1, :])
@@ -974,6 +761,7 @@ class MInterface(MInterface_base):
             # metrics for different length
             # Get the length of the ground truth sequence
             seq_length = len(gt_tokens)
+            self.sequence_lengths.append(seq_length)
 
             # Store metrics in corresponding length categories
             if seq_length <= 100:
@@ -1041,6 +829,7 @@ class MInterface(MInterface_base):
                 # Get the CATH class for the protein based on the PDB ID
                 pdb_id = sample_title.replace('.', '')[:5]  # Remove '.' and get first 5 chars
                 cath_class = fetch_cath_class(pdb_id)
+                self.cath_classes.append(cath_class)
 
                 # Append the metrics to the appropriate list based on the CATH class
                 # Append the metrics to the appropriate list based on the CATH class
@@ -1106,11 +895,15 @@ class MInterface(MInterface_base):
 
         return (
             losses, recoveries, plddt_ca_list, plddt_list, rmsds, tmscores, nssr_scores, hydrophobicity_rmsds, 
-            charge_rmsds, surface_recoveries, core_recoveries,
+            charge_rmsds, 
+            # surface_recoveries, core_recoveries,
         )
 
 
     def on_test_epoch_end(self):
+        def compute_avg(metric_list):
+            return torch.stack(metric_list).mean().to(model_device) if metric_list else torch.tensor(0.0).to(model_device)
+
         model_device = next(self.model.parameters()).device
         # Compute average loss and recovery across all test batches
         avg_loss = torch.stack([x['test_loss'] for x in self.test_step_outputs]).mean().to(model_device)
@@ -1122,8 +915,11 @@ class MInterface(MInterface_base):
         avg_nssr_score = torch.stack([x['test_nssr_score'] for x in self.test_step_outputs]).mean().to(model_device)
         avg_hydrophobicity_rmsd = torch.stack([x['test_hydrophobicity_rmsd'] for x in self.test_step_outputs]).mean().to(model_device)
         avg_charge_rmsd = torch.stack([x['test_charge_rmsd'] for x in self.test_step_outputs]).mean().to(model_device)
-        avg_surface_recovery = torch.stack([x['test_surface_recovery'] for x in self.test_step_outputs]).mean().to(model_device)
-        avg_core_recovery = torch.stack([x['test_core_recovery'] for x in self.test_step_outputs]).mean().to(model_device)
+        # avg_surface_recovery = torch.stack([x['test_surface_recovery'] for x in self.test_step_outputs]).mean().to(model_device)
+        # avg_core_recovery = torch.stack([x['test_core_recovery'] for x in self.test_step_outputs]).mean().to(model_device)
+
+        avg_surface_recovery = compute_avg(self.surface_recoveries)
+        avg_core_recovery = compute_avg(self.core_recoveries)
 
         # Compute perplexity over the entire test set
         perplexity = self.perplexity_metric.compute().to(model_device)
@@ -1142,8 +938,13 @@ class MInterface(MInterface_base):
         self.log("test_surface_recovery", avg_surface_recovery, on_step=False, on_epoch=True, sync_dist=True, reduce_fx="mean")
         self.log("test_core_recovery", avg_core_recovery, on_step=False, on_epoch=True, sync_dist=True, reduce_fx="mean")
 
-        def compute_avg(metric_list):
-            return torch.stack(metric_list).mean().to(model_device) if metric_list else torch.tensor(0.0).to(model_device)
+        avg_tmscore_cath42_82 = compute_avg(self.tmscores_cath42_82)
+        avg_plddt_ca_cath42_82 = compute_avg(self.plddt_ca_cath42_82)
+        avg_plddt_cath42_82 = compute_avg(self.plddt_cath42_82)
+        print('number of samples in cath_42_82: ', len(self.tmscores_cath42_82))
+        self.log("test_tmscore_cath42_82", avg_tmscore_cath42_82, on_epoch=True, sync_dist=True)
+        self.log("test_plddt_ca_cath42_82", avg_plddt_ca_cath42_82, on_epoch=True, sync_dist=True)
+        self.log("test_plddt_cath42_82", avg_plddt_cath42_82, on_epoch=True, sync_dist=True)
 
         # Aggregate metrics for sequences with length ≤ 100
         avg_recovery_len_100 = compute_avg(self.recovery_len_100)
@@ -1307,23 +1108,23 @@ class MInterface(MInterface_base):
         self.log("test_charge_rmsd_other", avg_charge_rmsd_other, on_epoch=True, sync_dist=True)  # New
 
         # contact order
-        if self.trainer.global_rank == 0:  # Check if it's the master process
-            contact_orders = torch.stack(self.contact_orders).cpu().numpy()
-            recoveries = torch.stack([x['test_recovery'] for x in self.test_step_outputs]).cpu().numpy()
+        # if self.trainer.global_rank == 0:  # Check if it's the master process
+        #     contact_orders = torch.stack(self.contact_orders).cpu().numpy()
+        #     recoveries = torch.stack([x['test_recovery'] for x in self.test_step_outputs]).cpu().numpy()
 
-            metrics_save_directory = f"test_results/{self.hparams.ex_name}/{self.hparams.dataset}"
-            os.makedirs(metrics_save_directory, exist_ok=True)
-            contact_order_save_path = os.path.join(metrics_save_directory, "contact_orders.npy")
-            recovery_save_path = os.path.join(metrics_save_directory, "recoveries.npy")
-            np.save(contact_order_save_path, contact_orders)
-            np.save(recovery_save_path, recoveries)
+        #     metrics_save_directory = f"test_results/{self.hparams.ex_name}/{self.hparams.dataset}"
+        #     os.makedirs(metrics_save_directory, exist_ok=True)
+        #     contact_order_save_path = os.path.join(metrics_save_directory, "contact_orders.npy")
+        #     recovery_save_path = os.path.join(metrics_save_directory, "recoveries.npy")
+        #     np.save(contact_order_save_path, contact_orders)
+        #     np.save(recovery_save_path, recoveries)
 
-            contact_order_recovery_plot_save_path = os.path.join(metrics_save_directory, "contact_order_recovery.png")
-            plt.figure()
-            plt.scatter(contact_orders, recoveries, c='blue', alpha=0.5)
-            plt.title("CO-recovery Plot")
-            plt.savefig(contact_order_recovery_plot_save_path)
-            plt.close()
+        #     contact_order_recovery_plot_save_path = os.path.join(metrics_save_directory, "contact_order_recovery.png")
+        #     plt.figure()
+        #     plt.scatter(contact_orders, recoveries, c='blue', alpha=0.5)
+        #     plt.title("CO-recovery Plot")
+        #     plt.savefig(contact_order_recovery_plot_save_path)
+        #     plt.close()
 
         # Compute residue-level metrics (for all residues)
         all_residue_accuracy = self.all_residue_accuracy.compute().to(model_device)
@@ -1349,6 +1150,55 @@ class MInterface(MInterface_base):
             self.log(f"test_{residue_type}_precision", binary_precision, on_epoch=True, sync_dist=True)
             self.log(f"test_{residue_type}_recall", binary_recall, on_epoch=True, sync_dist=True)
             self.log(f"test_{residue_type}_f1", binary_f1, on_epoch=True, sync_dist=True)
+
+        # save
+        metrics_data = {
+            'Recovery': [x['test_recovery'].cpu().numpy() for x in self.test_step_outputs],
+            'NSSR': [x['test_nssr_score'].cpu().numpy() for x in self.test_step_outputs],
+            'pLDDT_CA': [x['test_plddt_ca'].cpu().numpy() for x in self.test_step_outputs],
+            'pLDDT': [x['test_plddt'].cpu().numpy() for x in self.test_step_outputs],
+            'RMSD': [x['test_rmsd'].cpu().numpy() for x in self.test_step_outputs],
+            'TMScore': [x['test_tmscore'].cpu().numpy() for x in self.test_step_outputs],
+        }
+        if self.hparams.dataset == 'CATH4.2SurfProPiFoldDense':
+            # Add partition data
+            partitions_data = {
+                'CATH_Class': self.cath_classes,
+                'Sequence_Length': self.sequence_lengths,
+                'Contact_Order': torch.stack(self.contact_orders).cpu().numpy(),
+            }
+        else:
+            partitions_data = {
+                'Sequence_Length': self.sequence_lengths,
+                'Contact_Order': torch.stack(self.contact_orders).cpu().numpy(),
+            }            
+        
+        # Combine metrics and partitions into one dictionary
+        data = {**metrics_data, **partitions_data}
+        
+        # Convert to DataFrame
+        df = pd.DataFrame(data)
+        
+        # Save to CSV file
+        metrics_save_directory = f"test_results/{self.hparams.ex_name}/{self.hparams.dataset}"
+        os.makedirs(metrics_save_directory, exist_ok=True)
+        csv_save_path = os.path.join(metrics_save_directory, "test_results.csv")
+        df.to_csv(csv_save_path, index=False)
+        
+        print(f"Metrics saved to {csv_save_path}")
+
+        # surface / core
+        # Convert and save each list to CSV
+        file_names = [
+            ("surface_recoveries.csv", self.surface_recoveries),
+            ("core_recoveries.csv", self.core_recoveries),
+            ("surface_nssrs.csv", self.surface_nssrs),
+            ("core_nssrs.csv", self.core_nssrs)
+        ]
+
+        for file_name, tensor_list in file_names:
+            np_array = torch.stack(tensor_list).cpu().numpy()
+            np.savetxt(os.path.join(metrics_save_directory, file_name), np_array, delimiter=',')
 
         # Reset the metrics for the next test run
         self.all_residue_accuracy.reset()
@@ -1475,7 +1325,8 @@ class MInterface(MInterface_base):
         self.model.eval()
         # losses, recoveries, plddt_cas, plddts, rmsds, tmscores, nssr_scores, hydrophobicity_rmsds, charge_rmsds = self.test_forward(batch)
         with torch.no_grad():
-            losses, recoveries, plddt_cas, plddts, rmsds, tmscores, nssr_scores, hydrophobicity_rmsds, charge_rmsds, surface_recoveries, core_recoveries = self.test_forward(batch)
+            # losses, recoveries, plddt_cas, plddts, rmsds, tmscores, nssr_scores, hydrophobicity_rmsds, charge_rmsds, surface_recoveries, core_recoveries = self.test_forward(batch)
+            losses, recoveries, plddt_cas, plddts, rmsds, tmscores, nssr_scores, hydrophobicity_rmsds, charge_rmsds = self.test_forward(batch)
 
             for i, loss in enumerate(losses):
                 recovery = recoveries[i]
@@ -1486,8 +1337,8 @@ class MInterface(MInterface_base):
                 nssr_score = nssr_scores[i]
                 hydrophobicity_rmsd = hydrophobicity_rmsds[i]
                 charge_rmsd = charge_rmsds[i]
-                surface_recovery = surface_recoveries[i]
-                core_recovery = core_recoveries[i]
+                # surface_recovery = surface_recoveries[i]
+                # core_recovery = core_recoveries[i]
                 self.test_step_outputs.append({
                         "test_loss": loss,
                         "test_recovery": recovery,
@@ -1498,8 +1349,8 @@ class MInterface(MInterface_base):
                         'test_nssr_score': nssr_score,
                         'test_hydrophobicity_rmsd': hydrophobicity_rmsd,
                         'test_charge_rmsd': charge_rmsd,
-                        'test_surface_recovery': surface_recovery,
-                        'test_core_recovery': core_recovery,
+                        # 'test_surface_recovery': surface_recovery,
+                        # 'test_core_recovery': core_recovery,
                     }
                 )
 
@@ -1509,9 +1360,9 @@ class MInterface(MInterface_base):
     def test_setup(self):
         model_device = next(self.model.parameters()).device
 
-        # self.esmfold_model = EsmForProteinFolding.from_pretrained("facebook/esmfold_v1", cache_dir="cache/transformers/esmforproteinfolding")
-        # self.esmfold_model.trunk.set_chunk_size(512)
-        # self.esmfold_model = self.esmfold_model.to(model_device)
+        self.esmfold_model = EsmForProteinFolding.from_pretrained("facebook/esmfold_v1", cache_dir="cache/transformers/esmforproteinfolding")
+        self.esmfold_model.trunk.set_chunk_size(128)
+        self.esmfold_model = self.esmfold_model.to(model_device)
 
         self.perplexity_metric = Perplexity(device=model_device)
 

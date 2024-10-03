@@ -133,6 +133,9 @@ lightning_logs/
 predicted_pdb/
 raw_test_data/
 test_results/
+alphafolddb/
+cath_test_82/
+figures/
 TMscore*
 
 # Pytorch

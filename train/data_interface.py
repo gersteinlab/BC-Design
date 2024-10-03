@@ -152,6 +152,11 @@ class DInterface(DInterface_base):
             self.data_module = TS500Dataset
             self.hparams['path'] = osp.join(self.hparams.data_root, 'ts500')
 
+        if name == 'AFDB2000':
+            from src.datasets.afdb_dataset  import AFDB2000Dataset
+            self.data_module = AFDB2000Dataset
+            self.hparams['path'] = osp.join(self.hparams.data_root, 'afdb2000')
+
     def instancialize(self, **other_args):
         """ Instancialize a model using the corresponding parameters
             from self.hparams dictionary. You can also input any args

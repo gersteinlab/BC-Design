@@ -39,8 +39,8 @@ def create_parser():
     # Set-up parameters
     parser.add_argument('--res_dir', default='./train/results', type=str)
     # parser.add_argument('--ex_name', default='SurfProPiFold', type=str)
-    parser.add_argument('--ex_name', default='SBC2-gtlayers4-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20', type=str)
-    # parser.add_argument('--ex_name', default='debug1', type=str)
+    # parser.add_argument('--ex_name', default='SBC2-gtlayers3-mha2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20', type=str)
+    parser.add_argument('--ex_name', default='ablat-hydro-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20-retrainfrom18', type=str)
     parser.add_argument('--check_val_every_n_epoch', default=1, type=int)
     
     
@@ -74,8 +74,8 @@ def create_parser():
     parser.add_argument('--use_product', default=0, type=int)
 
     # Checkpoint parameter
-    # parser.add_argument('--checkpoint_path', default='./train/results/ablat-v-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/last.ckpt', type=str, help='Path to a checkpoint to resume training')
-    parser.add_argument('--checkpoint_path', default=None, type=str, help='Path to a checkpoint to resume training')
+    parser.add_argument('--checkpoint_path', default='./train/results/ablat-hydro-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=18-recovery=0.485.ckpt', type=str, help='Path to a checkpoint to resume training')
+    # parser.add_argument('--checkpoint_path', default=None, type=str, help='Path to a checkpoint to resume training')
 
     args = parser.parse_args()
     return args
