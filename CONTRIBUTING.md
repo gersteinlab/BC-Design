@@ -1,6 +1,6 @@
-# Contributing to *PLACEHOLDER*
+# Contributing to *BC-Design*
 
-We welcome contributions from everyone to help improve and expand *PLACEHOLDER*. This document outlines the process for contributing to the project.
+We welcome contributions from everyone to help improve and expand *BC-Design*. This document outlines the process for contributing to the project.
 
 ## Table of Contents
 1. [Environment Setup](#environment-setup)
@@ -10,17 +10,17 @@ We welcome contributions from everyone to help improve and expand *PLACEHOLDER*.
 
 ## Environment Setup
 
-To contribute to *PLACEHOLDER*, follow these steps to set up your development environment:
+To contribute to *BC-Design*, follow these steps to set up your development environment:
 
 1. Clone the repository:
    ```
-   git clone https://github.com/gersteinlab/placeholder.git
-   cd placeholder
+   git clone https://github.com/gersteinlab/BC-Design.git
+   cd BC-Design
    ```
 2. Create a Conda environment:
    ```
-   conda create -n placeholder python=3.10
-   conda activate placeholder
+   conda create -n BC-Design python=3.10
+   conda activate BC-Design
    ```
 3. Install the project in editable mode with development dependencies:
    ```
@@ -110,4 +110,4 @@ When you open a new pull request, please use the following template:
 [Add any additional information or context about the PR here]
 ```
 
-Thank you for contributing to *PLACEHOLDER*!
+Thank you for contributing to *BC-Design*!
