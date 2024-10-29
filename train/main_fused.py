@@ -8,7 +8,7 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 # Set environment variable for device-side assertions
 os.environ["TORCH_USE_CUDA_DSA"] = "1"
 # Set CUDA_VISIBLE_DEVICES to only use GPU 1 and 2
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 # os.environ['NCCL_P2P_DISABLE'] = '1'
 
 import warnings
@@ -39,8 +39,7 @@ def create_parser():
     # Set-up parameters
     parser.add_argument('--res_dir', default='./train/results', type=str)
     # parser.add_argument('--ex_name', default='SurfProPiFold', type=str)
-    # parser.add_argument('--ex_name', default='SBC2-gtlayers3-mha2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20', type=str)
-    parser.add_argument('--ex_name', default='ablat-hydro-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20-retrainfrom18', type=str)
+    parser.add_argument('--ex_name', default='gpe-correct-SBC2-sum3-minlrdiv1-bs4-lr00002-epoch20', type=str)
     parser.add_argument('--check_val_every_n_epoch', default=1, type=int)
     
     
@@ -58,7 +57,7 @@ def create_parser():
     parser.add_argument('--seed', default=111, type=int)
     
     # dataset parameters
-    parser.add_argument('--batch_size', default=2, type=int)
+    parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--num_workers', default=0, type=int)
     # parser.add_argument('--num_workers', default=4, type=int)
     parser.add_argument('--pad', default=1024, type=int)
@@ -74,8 +73,8 @@ def create_parser():
     parser.add_argument('--use_product', default=0, type=int)
 
     # Checkpoint parameter
-    parser.add_argument('--checkpoint_path', default='./train/results/ablat-hydro-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=18-recovery=0.485.ckpt', type=str, help='Path to a checkpoint to resume training')
-    # parser.add_argument('--checkpoint_path', default=None, type=str, help='Path to a checkpoint to resume training')
+    # parser.add_argument('--checkpoint_path', default='./train/results/ablat-hydro-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=18-recovery=0.485.ckpt', type=str, help='Path to a checkpoint to resume training')
+    parser.add_argument('--checkpoint_path', default=None, type=str, help='Path to a checkpoint to resume training')
 
     args = parser.parse_args()
     return args
@@ -135,7 +134,7 @@ if __name__ == "__main__":
     data_module.setup()
     
     # gpu_count = torch.cuda.device_count()
-    gpu_count = 2
+    gpu_count = 4
     args.steps_per_epoch = math.ceil(len(data_module.trainset)/args.batch_size/gpu_count)
     print(f"steps_per_epoch {args.steps_per_epoch},  gpu_count {gpu_count}, batch_size{args.batch_size}")
 

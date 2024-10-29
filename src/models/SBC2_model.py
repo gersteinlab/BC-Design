@@ -1198,7 +1198,8 @@ class SBC2Model(nn.Module):
             adj_matrix = torch.zeros((num_nodes, num_nodes), device=device)
             
             # Populate adjacency matrix with the local edges
-            adj_matrix[edge_indices_b[0], edge_indices_b[1]] = 0
+            # adj_matrix[edge_indices_b[0], edge_indices_b[1]] = 0
+            adj_matrix[edge_indices_b[0], edge_indices_b[1]] = 1 # right
             # for src, dst in edge_indices_b.t():  # Transpose to get pairs of edges
             #     adj_matrix[src, dst] = 1
             #     adj_matrix[dst, src] = 1  # Assuming undirected graph

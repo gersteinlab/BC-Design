@@ -4,7 +4,7 @@ import sys
 sys.path.append(os.getcwd())
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 os.environ["TORCH_USE_CUDA_DSA"] = "1"
-os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 # os.environ['NCCL_P2P_DISABLE'] = '1'
 
 import warnings
@@ -91,105 +91,6 @@ def create_baseline_batch(batch):
     return baseline_batch
 
 
-def individual_integrated_gradients(model, batch, steps=50):
-    batch_id, E_idx = batch['batch_id'], batch['E_idx']
-    B = len(batch_id.unique())  # Batch size
-    model.eval()  # Ensure the model is in evaluation mode
-
-    with torch.no_grad():
-        orig_results = model(batch)
-        orig_log_probs = orig_results['log_probs']
-        pred_indices = orig_log_probs.argmax(dim=-1)
-    
-    # Prepare baseline (e.g., zeros)
-    baseline_batch = create_baseline_batch(batch)  # Ensure same device
-
-    # Initialize a dict to store results
-    integrated_grads_dict = {}
-
-    # Initialize lists to accumulate gradients over steps
-    grads_V_accum = {}
-    grads_E_accum = {}
-    grads_biochem_accum = {}
-
-    # Loop through each predicted index (token level)
-    for j in range(B):
-        node_indices = (batch_id == j).nonzero(as_tuple=True)[0]
-        title = batch['title'][j]  # Unique title for each sample
-        integrated_grads_dict[title] = {'grads': []}
-        grads_V_accum[title] = [[] for _ in range(len(node_indices))]  # One list per token
-        grads_E_accum[title] = [[] for _ in range(len(node_indices))]
-        grads_biochem_accum[title] = [[] for _ in range(len(node_indices))]
-
-    # Loop through each interpolation step
-    for step in tqdm(range(steps + 1)):
-        alpha = float(step) / steps
-        scaled_batch = copy.deepcopy(baseline_batch)
-
-        with torch.enable_grad():
-            # Interpolate between baseline and actual inputs
-            scaled_batch['_V'] = (baseline_batch['_V'] + alpha * (batch['_V'] - baseline_batch['_V'])).requires_grad_(True)
-            scaled_batch['_E'] = (baseline_batch['_E'] + alpha * (batch['_E'] - baseline_batch['_E'])).requires_grad_(True)
-            scaled_batch['features'] = (baseline_batch['features'] + alpha * (batch['features'] - baseline_batch['features'])).requires_grad_(True)
-            # Forward pass for scaled input
-            results = model(scaled_batch)
-            log_probs = results['log_probs']
-
-            # Iterate over each token and sample to compute gradients
-            for i, pred_index in enumerate(pred_indices):
-                target_output = log_probs[i, pred_index]
-
-                # Compute gradients for this token
-                model.zero_grad()
-                target_output.backward(retain_graph=True)
-
-                for j in range(B):
-                    node_indices = (batch_id == j).nonzero(as_tuple=True)[0]  # Get indices for the current sample (nodes)
-                    min_node_id = node_indices.min().item()
-                    src, dst = E_idx[0, :], E_idx[1, :]
-                    local_edges_mask = (src >= min_node_id) & (src < min_node_id + node_indices.size(0))
-
-                    # Accumulate gradients for _V (nodes)
-                    grad_V = scaled_batch['_V'].grad[node_indices].data.clone().cpu()
-                    grads_V_accum[batch['title'][j]][i - min_node_id].append(grad_V)
-
-                    # Accumulate gradients for _E (edges)
-                    grad_E = scaled_batch['_E'].grad[local_edges_mask].data.clone().cpu()
-                    grads_E_accum[batch['title'][j]][i - min_node_id].append(grad_E)
-
-                    # Accumulate gradients for biochem (biochemical features)
-                    grad_biochem = scaled_batch['features'].grad[j].data.clone().cpu()
-                    grads_biochem_accum[batch['title'][j]][i - min_node_id].append(grad_biochem)
-
-    # After accumulating over all steps, calculate the Integrated Gradients
-    for title in integrated_grads_dict.keys():
-        integrated_grads_V = []
-        integrated_grads_E = []
-        integrated_grads_biochem = []
-
-        # Compute average gradients for each token
-        for k in range(len(grads_V_accum[title])):
-            integrated_grads_V.append(torch.stack(grads_V_accum[title][k]).mean(dim=0).cpu().numpy())
-        
-        # Compute average gradients for each edge
-        for k in range(len(grads_E_accum[title])):
-            integrated_grads_E.append(torch.stack(grads_E_accum[title][k]).mean(dim=0).cpu().numpy())
-
-        # Compute average gradients for each biochemical feature
-        for k in range(len(grads_biochem_accum[title])):
-            integrated_grads_biochem.append(torch.stack(grads_biochem_accum[title][k]).mean(dim=0).cpu().numpy())
-
-        # Store the integrated gradients for this sample
-        token_integrated_grads = {
-            '_V': integrated_grads_V,
-            '_E': integrated_grads_E,
-            'biochem': integrated_grads_biochem
-        }
-
-        integrated_grads_dict[title]['grads'] = token_integrated_grads
-
-    return integrated_grads_dict
-
 
 def integrated_gradients(model, batch, steps=50):
     batch_id, E_idx = batch['batch_id'], batch['E_idx']
@@ -217,8 +118,6 @@ def integrated_gradients(model, batch, steps=50):
     integrated_grads_dict = {}
 
     # Initialize lists to accumulate gradients over steps
-    grads_V_accum = {}
-    grads_E_accum = {}
     grads_biochem_accum = {}
 
     # Loop through each predicted index (token level)
@@ -226,8 +125,6 @@ def integrated_gradients(model, batch, steps=50):
         node_indices = (batch_id == j).nonzero(as_tuple=True)[0]
         title = batch['title'][j]  # Unique title for each sample
         integrated_grads_dict[title] = {'grads': []}
-        grads_V_accum[title] = {res: [] for res in residue_types + ['overall']}  # One list per token
-        grads_E_accum[title] = {res: [] for res in residue_types + ['overall']}
         grads_biochem_accum[title] = {res: [] for res in residue_types + ['overall']}
 
     # Loop through each interpolation step
@@ -237,8 +134,6 @@ def integrated_gradients(model, batch, steps=50):
 
         with torch.enable_grad():
             # Interpolate between baseline and actual inputs
-            scaled_batch['_V'] = (baseline_batch['_V'] + alpha * (batch['_V'] - baseline_batch['_V'])).requires_grad_(True)
-            scaled_batch['_E'] = (baseline_batch['_E'] + alpha * (batch['_E'] - baseline_batch['_E'])).requires_grad_(True)
             scaled_batch['features'] = (baseline_batch['features'] + alpha * (batch['features'] - baseline_batch['features'])).requires_grad_(True)
             # Forward pass for scaled input
             results = model(scaled_batch)
@@ -257,19 +152,6 @@ def integrated_gradients(model, batch, steps=50):
                 target_output.backward(retain_graph=True)
 
                 for j in range(B):
-                    node_indices = (batch_id == j).nonzero(as_tuple=True)[0]  # Get indices for the current sample (nodes)
-                    min_node_id = node_indices.min().item()
-                    src, dst = E_idx[0, :], E_idx[1, :]
-                    local_edges_mask = (src >= min_node_id) & (src < min_node_id + node_indices.size(0))
-
-                    # Accumulate gradients for _V (nodes)
-                    grad_V = scaled_batch['_V'].grad[node_indices].data.clone().cpu()
-                    grads_V_accum[batch['title'][j]][residue].append(grad_V)
-
-                    # Accumulate gradients for _E (edges)
-                    grad_E = scaled_batch['_E'].grad[local_edges_mask].data.clone().cpu()
-                    grads_E_accum[batch['title'][j]][residue].append(grad_E)
-
                     # Accumulate gradients for biochem (biochemical features)
                     grad_biochem = scaled_batch['features'].grad[j].data.clone().cpu()
                     grads_biochem_accum[batch['title'][j]][residue].append(grad_biochem)
@@ -282,38 +164,13 @@ def integrated_gradients(model, batch, steps=50):
             target_output.backward(retain_graph=True)
 
             for j in range(B):
-                node_indices = (batch_id == j).nonzero(as_tuple=True)[0]  # Get indices for the current sample (nodes)
-                min_node_id = node_indices.min().item()
-                src, dst = E_idx[0, :], E_idx[1, :]
-                local_edges_mask = (src >= min_node_id) & (src < min_node_id + node_indices.size(0))
-
-                # Accumulate gradients for _V (nodes)
-                grad_V = scaled_batch['_V'].grad[node_indices].data.clone().cpu()
-                grads_V_accum[batch['title'][j]]['overall'].append(grad_V)
-
-                # Accumulate gradients for _E (edges)
-                grad_E = scaled_batch['_E'].grad[local_edges_mask].data.clone().cpu()
-                grads_E_accum[batch['title'][j]]['overall'].append(grad_E)
-
                 # Accumulate gradients for biochem (biochemical features)
                 grad_biochem = scaled_batch['features'].grad[j].data.clone().cpu()
                 grads_biochem_accum[batch['title'][j]]['overall'].append(grad_biochem)
 
     # After accumulating over all steps, calculate the Integrated Gradients
     for title in integrated_grads_dict.keys():
-        integrated_grads_V = {}
-        integrated_grads_E = {}
         integrated_grads_biochem = {}
-
-        # Compute average gradients for each token
-        for k in grads_V_accum[title]:
-            if grads_V_accum[title][k]:
-                integrated_grads_V[k] = torch.stack(grads_V_accum[title][k]).mean(dim=0).cpu().numpy()
-        
-        # Compute average gradients for each edge
-        for k in grads_E_accum[title]:
-            if grads_E_accum[title][k]:
-                integrated_grads_E[k] = torch.stack(grads_E_accum[title][k]).mean(dim=0).cpu().numpy()
 
         # Compute average gradients for each biochemical feature
         for k in grads_biochem_accum[title]:
@@ -322,8 +179,6 @@ def integrated_gradients(model, batch, steps=50):
 
         # Store the integrated gradients for this sample
         token_integrated_grads = {
-            '_V': integrated_grads_V,
-            '_E': integrated_grads_E,
             'biochem': integrated_grads_biochem
         }
 
@@ -335,7 +190,7 @@ def integrated_gradients(model, batch, steps=50):
 # Main execution logic
 if __name__ == "__main__":
     args = create_parser()
-    ig_save_directory = f"ig_results_steps50/{args.ex_name}/{args.dataset}"
+    ig_save_directory = f"ig_biochem_results_steps50/{args.ex_name}/{args.dataset}"
     if not os.path.exists(ig_save_directory):
         os.makedirs(ig_save_directory)
     
@@ -350,7 +205,7 @@ if __name__ == "__main__":
     model = MInterface(**vars(args))
     
     # Load checkpoint if provided
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = load_model_checkpoint(model, args.checkpoint_path, device)
     model.to(device)  # Move model to GPU if available
     
@@ -368,9 +223,6 @@ if __name__ == "__main__":
             min_node_id = node_indices.min().item()
             src, dst = E_idx[0, :], E_idx[1, :]
             local_edges_mask = (src >= min_node_id) & (src < min_node_id + node_indices.size(0))
-
-            integrated_grads_dict[title]['X'] = batch['X'][node_indices, 1, :].cpu().numpy()
-            integrated_grads_dict[title]['E_idx'] = E_idx[:, local_edges_mask].cpu().numpy()
             integrated_grads_dict[title]['surface'] = batch['surface'][j].cpu().numpy()
 
             ig_path = os.path.join(ig_save_directory, f"{title}.pkl")

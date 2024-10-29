@@ -4,7 +4,7 @@ import sys
 sys.path.append(os.getcwd())
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 os.environ["TORCH_USE_CUDA_DSA"] = "1"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 # os.environ['NCCL_P2P_DISABLE'] = '1'
 
 import warnings
@@ -25,10 +25,15 @@ from pytorch_lightning.strategies import DDPStrategy
 torch.autograd.set_detect_anomaly(True)
 
 def create_parser():
-    # our best
+    # # our best
     # checkpoint_path = './train/results/SBC2-sum3-minlrdiv1-bs4-lr00002-epoch10/checkpoints/best-epoch=16-recovery=0.877.ckpt'
     # ex_name = 'SBC2-sum3-minlrdiv1-bs4-lr00002-epoch20-test'
     # batch_size = 1
+
+    # our best (1)
+    checkpoint_path = './train/results/gpe-correct-SBC2-sum3-minlrdiv1-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.879.ckpt'
+    ex_name = 'gpe-correct-SBC2-sum3-minlrdiv1-bs4-lr00002-epoch20-test'
+    batch_size = 1    
 
 
 
@@ -53,9 +58,9 @@ def create_parser():
     # ex_name = 'ablat-charge-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
     # batch_size = 1
 
-    checkpoint_path = './train/results/ablat-e-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.856.ckpt'
-    ex_name = 'ablat-e-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    batch_size = 2
+    # checkpoint_path = './train/results/ablat-e_c-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.856.ckpt'
+    # ex_name = 'ablat-e_c-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
+    # batch_size = 2
 
     # checkpoint_path = './train/results/ablat-v-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.848.ckpt'
     # ex_name = 'ablat-v-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'

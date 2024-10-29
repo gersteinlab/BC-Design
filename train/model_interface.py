@@ -28,6 +28,7 @@ import requests
 import time
 import copy
 import pandas as pd
+import statistics
 
 tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers") # mask token: 32
 esmfold_tokenizer = AutoTokenizer.from_pretrained("facebook/esmfold_v1", cache_dir="cache/transformers/tokenizers")
@@ -356,6 +357,13 @@ class MInterface(MInterface_base):
         self.cath_classes = []  # CATH class partition
         self.sequence_lengths = []  # Sequence length partition (≤100, 100–300, >300)
         self.contact_orders = []  # Contact order for each protein
+        self.titles = []
+
+        self.surface_sizes = []
+        self.core_sizes = []
+
+        self.surface_recoveries_nan_included = []
+        self.core_recoveries_nan_included = []
 
         self.surface_recoveries = []
         self.core_recoveries = []
@@ -451,6 +459,7 @@ class MInterface(MInterface_base):
 
         self.esmfold_model = None
 
+        self.inference_times = []
 
     def forward(self, batch, mode='train', temperature=1.0):
         if self.hparams.augment_eps>0:
@@ -458,6 +467,7 @@ class MInterface(MInterface_base):
 
         batch = self.model._get_features(batch)
         results = self.model(batch)
+
         log_probs, mask = results['log_probs'], batch['mask']
         if len(log_probs.shape) == 3:
             loss = self.cross_entropy(log_probs.permute(0,2,1), batch['S'])
@@ -489,8 +499,10 @@ class MInterface(MInterface_base):
     def test_forward(self, batch):
         # Forward pass for test and additional metric calculations
         batch = self.model._get_features(batch)
-        # igs = integrated_gradients(self.model, batch)
+        start_time = time.time()
         results = self.model(batch)
+        end_time = time.time()
+        self.inference_times.append(end_time - start_time)
         log_probs, mask = results['log_probs'], batch['mask']
         batch_ids = batch['batch_id']
 
@@ -619,6 +631,8 @@ class MInterface(MInterface_base):
             pred_pdb_path = os.path.join(pdb_save_directory, f"{sample_title}.pdb")
             gt_pdb_path = os.path.join(gt_pdb_save_directory, f"{sample_title}.pdb")
 
+            self.titles.append(sample_title)
+
             # Check if the ground truth PDB exists
             if not os.path.exists(gt_pdb_path):
                 # Create the ground truth PDB from batch['X'] and amino_acid_sequence
@@ -726,10 +740,15 @@ class MInterface(MInterface_base):
             surface_recovery = cmp.float().mean()
             if not torch.isnan(surface_recovery):
                 self.surface_recoveries.append(surface_recovery)
+            self.surface_recoveries_nan_included.append(surface_recovery)
+            self.surface_sizes.append(len(surface_predicted_indices))
+
             cmp = core_predicted_indices == core_S_masked
             core_recovery = cmp.float().mean()
             if not torch.isnan(core_recovery):
                 self.core_recoveries.append(core_recovery)
+            self.core_recoveries_nan_included.append(core_recovery)
+            self.core_sizes.append(len(core_predicted_indices))
 
             # nssr for surface/core region
             surface_similar_pairs_count = 0
@@ -901,6 +920,13 @@ class MInterface(MInterface_base):
 
 
     def on_test_epoch_end(self):
+        # Calculate the average inference time per batch during testing
+        if self.inference_times:
+            avg_inference_time = statistics.mean(self.inference_times)
+            std_inference_time = statistics.stdev(self.inference_times)
+            print(f"Average inference time per batch: {avg_inference_time:.4f} seconds")
+            print(f"Standard deviation of inference time per batch: {std_inference_time:.4f} seconds")
+
         def compute_avg(metric_list):
             return torch.stack(metric_list).mean().to(model_device) if metric_list else torch.tensor(0.0).to(model_device)
 
@@ -1107,25 +1133,6 @@ class MInterface(MInterface_base):
         self.log("test_hydrophobicity_rmsd_other", avg_hydrophobicity_rmsd_other, on_epoch=True, sync_dist=True)  # New
         self.log("test_charge_rmsd_other", avg_charge_rmsd_other, on_epoch=True, sync_dist=True)  # New
 
-        # contact order
-        # if self.trainer.global_rank == 0:  # Check if it's the master process
-        #     contact_orders = torch.stack(self.contact_orders).cpu().numpy()
-        #     recoveries = torch.stack([x['test_recovery'] for x in self.test_step_outputs]).cpu().numpy()
-
-        #     metrics_save_directory = f"test_results/{self.hparams.ex_name}/{self.hparams.dataset}"
-        #     os.makedirs(metrics_save_directory, exist_ok=True)
-        #     contact_order_save_path = os.path.join(metrics_save_directory, "contact_orders.npy")
-        #     recovery_save_path = os.path.join(metrics_save_directory, "recoveries.npy")
-        #     np.save(contact_order_save_path, contact_orders)
-        #     np.save(recovery_save_path, recoveries)
-
-        #     contact_order_recovery_plot_save_path = os.path.join(metrics_save_directory, "contact_order_recovery.png")
-        #     plt.figure()
-        #     plt.scatter(contact_orders, recoveries, c='blue', alpha=0.5)
-        #     plt.title("CO-recovery Plot")
-        #     plt.savefig(contact_order_recovery_plot_save_path)
-        #     plt.close()
-
         # Compute residue-level metrics (for all residues)
         all_residue_accuracy = self.all_residue_accuracy.compute().to(model_device)
         all_residue_precision = self.all_residue_precision.compute().to(model_device)
@@ -1159,6 +1166,8 @@ class MInterface(MInterface_base):
             'pLDDT': [x['test_plddt'].cpu().numpy() for x in self.test_step_outputs],
             'RMSD': [x['test_rmsd'].cpu().numpy() for x in self.test_step_outputs],
             'TMScore': [x['test_tmscore'].cpu().numpy() for x in self.test_step_outputs],
+            'Surface Recovery': torch.stack(self.surface_recoveries_nan_included).cpu().numpy(),
+            'Core Recovery': torch.stack(self.core_recoveries_nan_included).cpu().numpy(),
         }
         if self.hparams.dataset == 'CATH4.2SurfProPiFoldDense':
             # Add partition data
@@ -1166,11 +1175,17 @@ class MInterface(MInterface_base):
                 'CATH_Class': self.cath_classes,
                 'Sequence_Length': self.sequence_lengths,
                 'Contact_Order': torch.stack(self.contact_orders).cpu().numpy(),
+                'Core_size': self.core_sizes,
+                'Surface_size': self.surface_sizes,
+                'Title': self.titles,
             }
         else:
             partitions_data = {
                 'Sequence_Length': self.sequence_lengths,
                 'Contact_Order': torch.stack(self.contact_orders).cpu().numpy(),
+                'Core_size': self.core_sizes,
+                'Surface_size': self.surface_sizes,
+                'Title': self.titles,
             }            
         
         # Combine metrics and partitions into one dictionary
