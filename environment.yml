@@ -1,0 +1,21 @@
+name: OpenCPD
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - fvcore
+  - matplotlib
+  - numpy
+  - pip
+  - python
+  - pytorch
+  - pip:
+    - nni
+    - scikit-learn
+    - timm
+    - torch-cluster
+    - torch-geometric
+    - torch-scatter
+    - tqdm
+prefix: /opt/anaconda3/envs/opencpd
