@@ -2,7 +2,6 @@ import datetime
 import os
 import sys
 sys.path.append(os.getcwd())
-os.environ["WANDB_API_KEY"] = "2ae9a362061d9366743c759a39692c9c647ca2b7"
 # Set environment variable for CUDA_LAUNCH_BLOCKING
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 # Set environment variable for device-side assertions
@@ -33,7 +32,7 @@ def create_parser():
     # Set-up parameters
     parser.add_argument('--res_dir', default='./train/results', type=str)
     # parser.add_argument('--ex_name', default='SurfProPiFold', type=str)
-    parser.add_argument('--ex_name', default='gpe-correct-SBC2-sum3-minlrdiv1-bs4-lr00002-epoch20', type=str)
+    parser.add_argument('--ex_name', default='BC-Design', type=str)
     parser.add_argument('--check_val_every_n_epoch', default=1, type=int)
     
     parser.add_argument('--dataset', default='CATH4.2') # AF2DB_dataset, CATH_dataset

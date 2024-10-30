@@ -1,34 +1,11 @@
-import sys; sys.path.append('/huyuqi/xmyu/DiffSDS')
 import inspect
 import torch
-from src.tools.utils import cuda
-import numpy as np
-import matplotlib.pyplot as plt
 import torch.nn as nn
 import os
-from torcheval.metrics.text import Perplexity
-from torcheval.metrics import MulticlassAccuracy, MulticlassPrecision, MulticlassRecall, MulticlassF1Score, BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score
 from src.interface.model_interface import MInterface_base
-from src.models.MemoryPiFold import MemoPiFold_model
 import math
-import torch.nn.functional as F
-from torch.cuda.amp import autocast
 from omegaconf import OmegaConf
-from transformers import AutoTokenizer, EsmForProteinFolding
 from transformers.models.esm.openfold_utils.protein import to_pdb, Protein as OFProtein
-from transformers.models.esm.openfold_utils.feats import atom14_to_atom37
-from Bio import PDB
-from Bio.PDB import Superimposer, Structure, Model, Chain, Residue
-from Bio.PDB.Atom import Atom
-from Bio.Align import substitution_matrices
-from Bio.PDB.SASA import ShrakeRupley
-from io import StringIO
-import subprocess
-import requests
-import time
-import copy
-import pandas as pd
-import statistics
 
 # Define residue types (20 standard amino acids)
 residue_types = ['A', 'R', 'N', 'D', 'C', 'Q', 'E', 'G', 'H', 'I', 
@@ -41,8 +18,6 @@ residue_to_index = {
     'L': 10, 'K': 11, 'M': 12, 'F': 13, 'P': 14,
     'S': 15, 'T': 16, 'W': 17, 'Y': 18, 'V': 19
 }
-
-
 
 
 class MInterface(MInterface_base):
@@ -69,14 +44,9 @@ class MInterface(MInterface_base):
             
             loss = (loss*mask).sum()/(mask.sum())
 
-        if self.hparams.model_name == 'SBCModel':
-            contrastive_loss = results['contrastive_loss']
-            loss += contrastive_loss
-            # loss = 0.5 * loss + 0.5 * contrastive_loss
         if self.hparams.model_name == 'SBC2Model':
             contrastive_loss = results['contrastive_loss']
             loss += contrastive_loss
-            # loss = 2 * loss + contrastive_loss
         
         cmp = log_probs.argmax(dim=-1)==batch['S']
         recovery = (cmp*mask).sum()/(mask.sum())
