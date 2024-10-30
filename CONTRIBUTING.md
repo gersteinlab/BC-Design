@@ -19,13 +19,12 @@ To contribute to *BC-Design*, follow these steps to set up your development envi
    ```
 2. Create a Conda environment:
    ```
-   conda create -n BC-Design python=3.10
-   conda activate BC-Design
+   conda env create -f environment.yml
+   conda activate opencpd
    ```
 3. Install the project in editable mode with development dependencies:
    ```
-   python3 -m pip install --upgrade pip
-   pip install -e .
+   python setup.py develop
    ```
 
 ## Coding Standards
