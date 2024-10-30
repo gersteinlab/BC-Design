@@ -77,10 +77,6 @@ python train/main_fused.py
 
 This project is released under the [Apache 2.0 license](LICENSE). See `LICENSE` for more information.
 
-## Acknowledgement
-
-This project builds upon and is inspired by the work from the [ProteinInvBench repository](https://github.com/A4Bio/ProteinInvBench). We extend our gratitude to the original authors for their foundational contributions and for making their work open-source, which provided a valuable basis for our modifications and advancements. We encourage researchers to contribute to this project!
-
 <!-- ## Citation -->
 
 
