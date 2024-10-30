@@ -19,6 +19,10 @@ This repository contains the implementation code for the paper:
 
 Xiangru Tang<sup>†</sup>, Xinwu Ye</sup>†</sup>, Fang Wu</sup>†</sup>, Daniel Shao, Yin Fang, Siming Chen, Dong Xu, and Mark Gerstein.
 
+<sup>†</sup> Equal contribution
+
+![image](./assets/BC-Design.png)
+
 ## Introduction
 
 Inverse protein folding aims to design amino acid sequences that form specific 3D structures, which is crucial for protein engineering and drug development. Traditional approaches often neglect vital biochemical characteristics that impact protein function. BC-Design introduces a new approach that combines structural data and biochemical attributes, using a dual-encoder architecture for enhanced accuracy. This framework, which surpasses current methods in sequence recovery and structural precision, demonstrates strong generalization and performs well with complex protein features.
@@ -37,6 +41,8 @@ Inverse protein folding aims to design amino acid sequences that form specific 3
 <details open>
 <summary>Code Structures</summary>
 
+![image](./assets/BC-Design-overview.png)
+
 - `src/datasets` contains datasets, dataloaders, and collate functions
 - `src/interface` contains customized Pytorch-lightning data modules and modules.
 - `src/models/` contains the main BC-Design model architecture.
@@ -46,6 +52,8 @@ Inverse protein folding aims to design amino acid sequences that form specific 3
 </details>
 
 ## News and Updates
+
+- [🚀 2024-10-30] The official code is released.
 
 ## Installation
 
