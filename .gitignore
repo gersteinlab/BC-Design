@@ -145,6 +145,9 @@ process_test_datasets.ipynb
 visualization*
 train/main_eval.py
 train/ig*
+configs/
+requirements/
+src/modules/
 TMscore*
 
 # Pytorch
