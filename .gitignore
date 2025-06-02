@@ -154,8 +154,10 @@ configs/
 requirements/
 src/modules/
 TMscore*
+!TMscore
 environment-deprecated.yml
 environment0601.yml
+environment-full-deprecated.yml
 
 # models
 src/models/__pycache__/
