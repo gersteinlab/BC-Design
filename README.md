@@ -62,7 +62,7 @@ This section guides you through setting up the necessary environment and depende
 
 ### Step 1: Prerequisites - CUDA and GCC
 
-Before creating the Conda environment, please ensure your system meets the following requirements:
+Before creating the Conda environment, please ensure your system meets the following requirements. While other versions might also work, our code was developed and tested using the specific versions listed below:
 
 1.  **CUDA Version:** This project requires **NVIDIA driver support for CUDA 12.1.1**.
     * You can check your NVIDIA driver version by running `nvidia-smi`. Ensure it's compatible with CUDA 12.1.1. The Conda environment will install the specific CUDA toolkit, but your system's driver must be compatible.
