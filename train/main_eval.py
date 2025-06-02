@@ -32,7 +32,6 @@ def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--res_dir', default='./train/results', type=str)
     parser.add_argument('--ex_name', default=ex_name, type=str)
-    # parser.add_argument('--ex_name', default='PiFold-test', type=str)
     parser.add_argument('--check_val_every_n_epoch', default=1, type=int)
     parser.add_argument('--dataset', default='CATH4.2')
     # parser.add_argument('--dataset', default='TS50')
@@ -42,7 +41,7 @@ def create_parser():
                         choices=['SBC2Model'])
     parser.add_argument('--lr', default=0.0002, type=float, help='Learning rate')
     parser.add_argument('--lr_scheduler', default='onecycle')
-    parser.add_argument('--offline', default=0, type=int)
+    parser.add_argument('--offline', default=1, type=int)
     parser.add_argument('--seed', default=111, type=int)
     
     # dataset parameters
