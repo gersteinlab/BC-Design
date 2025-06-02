@@ -43,11 +43,11 @@ Inverse protein folding aims to design amino acid sequences that form specific 3
 
 ![image](./assets/BC-Design-overview.png)
 
-- `src/datasets` contains datasets, dataloaders, and collate functions
+- `src/datasets` contains datasets, featurizer, and utils
 - `src/interface` contains customized Pytorch-lightning data modules and modules.
 - `src/models/` contains the main BC-Design model architecture.
 - `src/tools` contains some script files of some tools.
-- `train` contains the training script.
+- `train` contains the training and inference script.
 
 </details>
 
@@ -55,17 +55,60 @@ Inverse protein folding aims to design amino acid sequences that form specific 3
 
 - [🚀 2024-10-30] The official code is released.
 
-## Installation
 
-This project has provided an environment setting file of conda, users can easily reproduce the environment by the following commands:
+## ⚙️ Installation
+
+This section guides you through setting up the necessary environment and dependencies to run BC-Design.
+
+### Step 1: Prerequisites - CUDA and GCC
+
+Before creating the Conda environment, please ensure your system meets the following requirements:
+
+1.  **CUDA Version:** This project requires **NVIDIA driver support for CUDA 12.1.1**.
+    * You can check your NVIDIA driver version by running `nvidia-smi`. Ensure it's compatible with CUDA 12.1.1. The Conda environment will install the specific CUDA toolkit, but your system's driver must be compatible.
+2.  **GCC Compiler:** A C/C++ compiler is needed, specifically **GCC version 12.2.0** or a compatible version.
+    * **Linux:** You can typically install GCC using your system's package manager. For example, on Debian/Ubuntu-based systems, you might use:
+        ```shell
+        sudo apt update
+        sudo apt install gcc-12 g++-12
+        ```
+        On other distributions, use the appropriate package manager (e.g., `yum`, `dnf`). You may need to configure your system to use this specific version if multiple GCC versions are installed.
+    * **HPC Environments:** If you are using a High-Performance Computing (HPC) cluster, GCC is often managed via environment modules. You might load it using a command like:
+        ```shell
+        module load gcc/12.2.0
+        ```
+        (The exact command may vary based on your HPC's module system.)
+    * **Other Systems (macOS, Windows via WSL2):** Ensure you have a compatible C/C++ compiler. For macOS, Xcode Command Line Tools provide Clang, which is often compatible. For Windows, WSL2 with a Linux distribution is recommended.
+
+### Step 2: Create Conda Environment
+
+This project has provided an environment setting file for Conda. Users can easily reproduce the Python environment by following these commands:
 
 ```shell
 git clone https://github.com/gersteinlab/BC-Design.git
 cd BC-Design
-conda env create -f environment.yml
-conda activate opencpd
-python setup.py develop
-```
+conda env create -f environment.yml -n [your-env-name]
+conda activate [your-env-name]
+````
+
+Replace `[your-env-name]` with your preferred name for the Conda environment (e.g., `bcdn`).
+
+### Step 3: Download Data and Model Checkpoint
+
+To train the model or run inference with the pre-trained checkpoint, you need to download the necessary data and the model weights.
+
+1.  Navigate to the OSF project page: [https://osf.io/pwbhg/files/osfstorage](https://osf.io/pwbhg/files/osfstorage)
+2.  Download the following files into the `BC-Design` folder (the main directory cloned from GitHub):
+      * `data.zip` (contains data for training and inference)
+      * `BC-Design.ckpt` (the pre-trained model checkpoint for inference)
+3.  Once downloaded, unzip the data file:
+    ```shell
+    unzip data.zip
+    ```
+    This should create a `data/` directory inside your `BC-Design` folder.
+
+After completing these steps, your environment should be ready, and you'll have the necessary data and model checkpoint to proceed with using BC-Design.
+
 
 ## Getting Started
 
@@ -77,6 +120,14 @@ The processed datasets could be found in the [releases](https://github.com/A4Bio
 
 ```shell
 python train/main_fused.py
+```
+
+**Model Inference**
+```shell
+python train/main_eval.py --dataset CATH4.2
+python train/main_eval.py --dataset TS50
+python train/main_eval.py --dataset TS500
+python train/main_eval.py --dataset AFDB2000
 ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
