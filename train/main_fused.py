@@ -8,6 +8,7 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 os.environ["TORCH_USE_CUDA_DSA"] = "1"
 # Set CUDA_VISIBLE_DEVICES to only use GPU 1 and 2
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 # os.environ['NCCL_P2P_DISABLE'] = '1'
 
 import warnings
@@ -30,7 +31,8 @@ torch.autograd.set_detect_anomaly(True)
 def create_parser():
     parser = argparse.ArgumentParser()
     # Set-up parameters
-    parser.add_argument('--res_dir', default='./train/results', type=str)
+    # parser.add_argument('--res_dir', default='./train/results', type=str)
+    parser.add_argument('--res_dir', default='./train/results-tmp', type=str)
     # parser.add_argument('--ex_name', default='SurfProPiFold', type=str)
     parser.add_argument('--ex_name', default='BC-Design', type=str)
     parser.add_argument('--check_val_every_n_epoch', default=1, type=int)
@@ -120,6 +122,7 @@ if __name__ == "__main__":
     
     # gpu_count = torch.cuda.device_count()
     gpu_count = 4
+    # gpu_count = 2
     args.steps_per_epoch = math.ceil(len(data_module.trainset)/args.batch_size/gpu_count)
     print(f"steps_per_epoch {args.steps_per_epoch},  gpu_count {gpu_count}, batch_size{args.batch_size}")
 

@@ -115,6 +115,7 @@ venv.bak/
 *.jpg
 bash
 data
+data-before0601
 data_set
 results/
 gaozhangyang/
