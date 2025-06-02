@@ -154,24 +154,15 @@ TMscore*
 
 # models
 src/models/__pycache__/
-src/models/alphadesign_model.py
-src/models/E3PIFold_model.py
-src/models/esmif_model.py
-src/models/gca_model.py
-src/models/graphtrans_model.py
-src/models/gvp_model.py
-src/models/kwdesign_model.py
-src/models/MemoryESM.py
-src/models/MemoryESMIF.py
-src/models/MemoryPiFold.py
-src/models/MemoryTuning.py
-src/models/pifold_model.py
-src/models/PretrainESM_model.py
-src/models/PretrainESMIF_model.py
-src/models/PretrainPIFold_model.py
-src/models/proteinmpnn_model.py
-src/models/structgnn_model.py
-src/models/Tuning.py
+src/models/*.py
+!src/models/__init__.py
+!src/models/SBC2_model.py
+
+
+src/models/configs/*.yaml
+
+# But DO NOT ignore SBC2Model.yaml (keep it tracked)
+!src/models/configs/SBC2Model.yaml
 
 # Pytorch
 *.pth
