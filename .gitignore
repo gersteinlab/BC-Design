@@ -151,6 +151,8 @@ configs/
 requirements/
 src/modules/
 TMscore*
+environment-deprecated.yml
+environment0601.yml
 
 # models
 src/models/__pycache__/
@@ -158,6 +160,10 @@ src/models/*.py
 !src/models/__init__.py
 !src/models/SBC2_model.py
 
+src/datasets/dataloader.py
+src/datasets/mpnn_dataset.py
+src/datasets/casp_dataset.py
+src/datasets/alphafold_dataset.py
 
 src/models/configs/*.yaml
 
