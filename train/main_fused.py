@@ -31,10 +31,9 @@ torch.autograd.set_detect_anomaly(True)
 def create_parser():
     parser = argparse.ArgumentParser()
     # Set-up parameters
-    # parser.add_argument('--res_dir', default='./train/results', type=str)
-    parser.add_argument('--res_dir', default='./train/results-tmp', type=str)
+    parser.add_argument('--res_dir', default='./train/results', type=str)
     # parser.add_argument('--ex_name', default='SurfProPiFold', type=str)
-    parser.add_argument('--ex_name', default='BC-Design', type=str)
+    parser.add_argument('--ex_name', default='BC-Design-reproduce', type=str)
     parser.add_argument('--check_val_every_n_epoch', default=1, type=int)
     
     parser.add_argument('--dataset', default='CATH4.2') # AF2DB_dataset, CATH_dataset

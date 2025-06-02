@@ -4,7 +4,7 @@ import sys
 sys.path.append(os.getcwd())
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 os.environ["TORCH_USE_CUDA_DSA"] = "1"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # os.environ['NCCL_P2P_DISABLE'] = '1'
 
 import warnings
@@ -25,8 +25,8 @@ from pytorch_lightning.strategies import DDPStrategy
 torch.autograd.set_detect_anomaly(True)
 
 def create_parser():
-    checkpoint_path = './train/results/gpe-correct-SBC2-sum3-minlrdiv1-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.879.ckpt'
-    ex_name = 'gpe-correct-SBC2-sum3-minlrdiv1-bs4-lr00002-epoch20-test'
+    checkpoint_path = './BC-Design.ckpt'
+    ex_name = 'BC-Design'
     batch_size = 1    
 
     parser = argparse.ArgumentParser()
