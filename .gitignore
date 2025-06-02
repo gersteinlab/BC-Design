@@ -118,6 +118,7 @@ data
 data-before0601
 data_set
 results/
+train/results-tmp/
 gaozhangyang/
 src/models/SurfPro/
 run.sh
@@ -150,6 +151,27 @@ configs/
 requirements/
 src/modules/
 TMscore*
+
+# models
+src/models/__pycache__/
+src/models/alphadesign_model.py
+src/models/E3PIFold_model.py
+src/models/esmif_model.py
+src/models/gca_model.py
+src/models/graphtrans_model.py
+src/models/gvp_model.py
+src/models/kwdesign_model.py
+src/models/MemoryESM.py
+src/models/MemoryESMIF.py
+src/models/MemoryPiFold.py
+src/models/MemoryTuning.py
+src/models/pifold_model.py
+src/models/PretrainESM_model.py
+src/models/PretrainESMIF_model.py
+src/models/PretrainPIFold_model.py
+src/models/proteinmpnn_model.py
+src/models/structgnn_model.py
+src/models/Tuning.py
 
 # Pytorch
 *.pth

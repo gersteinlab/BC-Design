@@ -42,7 +42,8 @@ def create_parser():
         choices=['SBC2Model'])
     parser.add_argument('--lr', default=0.0002, type=float, help='Learning rate')
     parser.add_argument('--lr_scheduler', default='onecycle')
-    parser.add_argument('--offline', default=0, type=int)
+    # parser.add_argument('--offline', default=0, type=int)
+    parser.add_argument('--offline', default=1, type=int)
     parser.add_argument('--seed', default=111, type=int)
     
     # dataset parameters
