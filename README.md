@@ -82,7 +82,7 @@ Before creating the Conda environment, please ensure your system meets the follo
 
 ### Step 2: Create Conda Environment
 
-This project has provided an environment setting file for Conda. Users can easily reproduce the Python environment by following these commands:
+This project has provided an environment setting file for **Miniconda3**. Users can easily reproduce the Python environment by following these commands:
 
 ```shell
 git clone https://github.com/gersteinlab/BC-Design.git
@@ -106,6 +106,13 @@ To train the model or run inference with the pre-trained checkpoint, you need to
     unzip data.zip
     ```
     This should create a `data/` directory inside your `BC-Design` folder.
+
+As an alternative, you can also run the following commands:
+```shell
+wget https://osf.io/download/683dcbe71618e6327085b39f/ -O BC-Design.ckpt
+wget https://osf.io/download/683dd27930c7903aaf85b1f7/ -O data.zip
+unzip data.zip
+````
 
 After completing these steps, your environment should be ready, and you'll have the necessary data and model checkpoint to proceed with using BC-Design.
 
