@@ -130,6 +130,7 @@ python train/main_fused.py
 ```
 
 **Model Inference**
+
 To run inference on the test set of CATH4.2:
 ```shell
 python train/main_eval.py --dataset CATH4.2
@@ -153,16 +154,6 @@ python train/main_eval.py --dataset TS500
 python train/main_eval.py --dataset AFDB2000
 ```
 
-Okay, I can help you add an explanation for `main_eval.py` to your README.
-
-Here's a suggested addition:
-
-```markdown
-python train/main_eval.py --dataset TS50
-python train/main_eval.py --dataset TS500
-python train/main_eval.py --dataset AFDB2000
-```
-
 The `train/main_eval.py` script is used to evaluate the pre-trained BC-Design model on test datasets. It loads the specified dataset and the pre-trained model checkpoint (`BC-Design.ckpt` by default) to perform inference and report evaluation metrics.
 
 **Key functionalities of `main_eval.py`:**
@@ -176,7 +167,7 @@ The `train/main_eval.py` script is used to evaluate the pre-trained BC-Design mo
     * `--num_workers`: Number of workers for data loading.
     * For a full list of arguments and their default values, you can refer to the `create_parser()` function within the `train/main_eval.py` script.
 
-This script initializes the data module (`DInterface`) and the model (`MInterface`) using PyTorch Lightning, then runs the `trainer.test()` method to perform the evaluation. The predicted protein sequence is saved under `predicted_pdb/[ex_name]/[dataset]`.
+This script initializes the data module (`DInterface`) and the model (`MInterface`) using PyTorch Lightning, then runs the `trainer.test()` method to perform the evaluation. The predicted protein sequences will be saved under `predicted_pdb/[ex_name]/[dataset]`.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
