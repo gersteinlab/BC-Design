@@ -130,12 +130,53 @@ python train/main_fused.py
 ```
 
 **Model Inference**
+To run inference on the test set of CATH4.2:
 ```shell
 python train/main_eval.py --dataset CATH4.2
+# Expected output:
+# ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+#        Test metric             DataLoader 0
+# ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+#         test_loss           0.3077324628829956
+#      test_nssr_score        0.9355388283729553
+#      test_perplexity         1.468966877420434
+#        test_plddt           0.7799139618873596
+#       test_plddt_ca         0.8211792707443237
+#       test_recovery         0.8836535215377808
+#       test_tmscore          0.8390856981277466
+# ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+```
+To run inference on the test set of TS50, TS500, or AFDB2000:
+```shell
 python train/main_eval.py --dataset TS50
 python train/main_eval.py --dataset TS500
 python train/main_eval.py --dataset AFDB2000
 ```
+
+Okay, I can help you add an explanation for `main_eval.py` to your README.
+
+Here's a suggested addition:
+
+```markdown
+python train/main_eval.py --dataset TS50
+python train/main_eval.py --dataset TS500
+python train/main_eval.py --dataset AFDB2000
+```
+
+The `train/main_eval.py` script is used to evaluate the pre-trained BC-Design model on test datasets. It loads the specified dataset and the pre-trained model checkpoint (`BC-Design.ckpt` by default) to perform inference and report evaluation metrics.
+
+**Key functionalities of `main_eval.py`:**
+-   **Dataset Selection:** You can specify the dataset for evaluation using the `--dataset` argument (e.g., `CATH4.2`, `TS50`, `TS500`, `AFDB2000`).
+-   **Checkpoint Loading:** It loads a pre-trained model from the path specified by `--checkpoint_path` (defaults to `./BC-Design.ckpt`).
+-   **Evaluation Metrics:** The script calculates and displays various performance metrics such as test loss, sequence recovery, perplexity, pLDDT, and TM-score.
+-   **Configurable Parameters:** Several aspects of the evaluation can be configured through command-line arguments, including:
+    * `--res_dir`: Directory to store results.
+    * `--batch_size`: Batch size for evaluation.
+    * `--data_root`: Root directory of the dataset.
+    * `--num_workers`: Number of workers for data loading.
+    * For a full list of arguments and their default values, you can refer to the `create_parser()` function within the `train/main_eval.py` script.
+
+This script initializes the data module (`DInterface`) and the model (`MInterface`) using PyTorch Lightning, then runs the `trainer.test()` method to perform the evaluation. The predicted protein sequence is saved under `predicted_pdb/[ex_name]/[dataset]`.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
