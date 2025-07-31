@@ -1,5 +1,6 @@
 # BC-Design: A Biochemistry-Aware Framework for High-Precision Inverse Protein Folding
 <p align="left">
+      <a href='https://www.biorxiv.org/content/10.1101/2024.10.28.620755v2'><img src='https://img.shields.io/badge/AGENT KB-arXiv-d63031?logo=arxiv&logoColor=white'></a>
 <a href="https://github.com/gersteinlab/BC-Design/blob/public-release/LICENSE" alt="license">
     <img src="https://img.shields.io/badge/license-Apache--2.0-%23002FA7" /></a>
 <a href="https://github.com/gersteinlab/BC-Design/issues" alt="docs">
@@ -21,11 +22,7 @@ Xiangru Tang<sup>†</sup>, Xinwu Ye</sup>†</sup>, Fang Wu</sup>†</sup>, Dan
 
 <sup>†</sup> Equal contribution
 
-<div align="center">
 
-  <a href='https://www.biorxiv.org/content/10.1101/2024.10.28.620755v2'><img src='https://img.shields.io/badge/AGENT KB-arXiv-d63031?logo=arxiv&logoColor=white'></a>
-  
-</div>
 
 
 ![image](./assets/BC-Design.png)
