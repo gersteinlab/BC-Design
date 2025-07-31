@@ -21,6 +21,13 @@ Xiangru Tang<sup>†</sup>, Xinwu Ye</sup>†</sup>, Fang Wu</sup>†</sup>, Dan
 
 <sup>†</sup> Equal contribution
 
+<div align="center">
+
+  <a href='https://www.biorxiv.org/content/10.1101/2024.10.28.620755v2'><img src='https://img.shields.io/badge/AGENT KB-arXiv-d63031?logo=arxiv&logoColor=white'></a>
+  
+</div>
+
+
 ![image](./assets/BC-Design.png)
 
 ## Introduction
