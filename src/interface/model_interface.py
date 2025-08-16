@@ -39,8 +39,8 @@ class MInterface_base(pl.LightningModule):
                                     gamma=self.hparams.lr_decay_rate)
         elif lr_scheduler == 'cosine':
             scheduler = lrs.CosineAnnealingLR(optimizer,
-                                                T_max=self.hparams.lr_decay_steps,
-                                                eta_min=self.hparams.lr_decay_min_lr)
+                                                T_max=self.hparams.steps_per_epoch*self.hparams.epoch,
+                                                eta_min=self.hparams.lr / 100)
         elif lr_scheduler == 'onecycle':
             scheduler = lrs.OneCycleLR(optimizer, max_lr=self.hparams.lr, steps_per_epoch=self.hparams.steps_per_epoch, epochs=self.hparams.epoch, three_phase=False,
                                     #    pct_start=0.5, div_factor=10

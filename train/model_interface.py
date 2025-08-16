@@ -455,6 +455,58 @@ class MInterface(MInterface_base):
         self.hydrophobicity_rmsd_other = []  # New
         self.charge_rmsd_other = []          # New
 
+        if self.hparams.checkpoint_path and os.path.exists(self.hparams.checkpoint_path):
+            if self.hparams.contrastive_pretrain:
+                print(f"MInterface is loading ENCODER weights from: {self.hparams.checkpoint_path}")
+                
+                # Load the entire checkpoint
+                checkpoint = torch.load(self.hparams.checkpoint_path, map_location='cpu')
+                
+                # Get the full state dictionary
+                full_state_dict = checkpoint['state_dict']
+                
+                # ----------------- Filtering Logic -----------------
+                # 1. Define the prefix for the encoder weights. 
+                #    In PyTorch Lightning, it's typically 'model.submodule_name.'
+                encoder_prefix = 'model.encoder.'
+                
+                # 2. Create a new dictionary for the encoder's weights
+                encoder_state_dict = {}
+                
+                # 3. Iterate through the loaded state_dict and filter for encoder keys
+                for key, value in full_state_dict.items():
+                    if key.startswith(encoder_prefix):
+                        # 4. Remove the prefix to match the keys in self.model.encoder
+                        new_key = key.replace(encoder_prefix, '', 1)
+                        encoder_state_dict[new_key] = value
+                        
+                # ----------------- Load the Filtered Weights -----------------
+                if not encoder_state_dict:
+                    print("Warning: No weights for the encoder were found in the checkpoint.")
+                else:
+                    # 5. Load the filtered state_dict directly into the encoder module
+                    #    Use strict=True to ensure the encoder architecture itself hasn't changed.
+                    self.model.encoder.load_state_dict(encoder_state_dict, strict=True)
+                    print("Successfully loaded weights into self.model.encoder.")
+            else:
+                print(f"MInterface is manually loading weights from checkpoint: {self.hparams.checkpoint_path}")
+                
+                # 使用 torch.load 加载 checkpoint 文件
+                # map_location='cpu' 是一个好习惯，可以防止 GPU 内存问题
+                checkpoint = torch.load(self.hparams.checkpoint_path, map_location='cpu')
+                
+                # PyTorch Lightning 保存的 checkpoint 是一个字典，
+                # 模型的权重保存在 'state_dict' 这个键下。
+                # 这个 state_dict 里的键通常带有 'model.' 前缀 (例如 'model.encoder.layers...')
+                state_dict = checkpoint['state_dict']
+                
+                # 直接在 MInterface 实例 (self) 上加载 state_dict
+                # Lightning 会自动将 'model.encoder...' 这样的键匹配到 self.model.encoder...
+                # 使用 strict=False 来忽略不匹配的键
+                self.load_state_dict(state_dict, strict=False)
+                
+                print("Weights loaded into the model successfully with strict=False.")
+
         self.test_setupped = False
 
         self.esmfold_model = None
@@ -464,35 +516,50 @@ class MInterface(MInterface_base):
     def forward(self, batch, mode='train', temperature=1.0):
         if self.hparams.augment_eps>0:
             batch['X'] = batch['X'] + self.hparams.augment_eps * torch.randn_like(batch['X'])
-
-        batch = self.model._get_features(batch)
+        if mode == 'train':
+            batch = self.model._get_features(batch)
+        elif mode == 'validation_biochem_gauss':
+            batch['features'] = torch.randn_like(batch['features'])
+        elif mode == 'validation_biochem_masktoken':
+            # replace with nan
+            batch['features'] = torch.full_like(batch['features'], float('nan'))
         results = self.model(batch)
 
         log_probs, mask = results['log_probs'], batch['mask']
-        if len(log_probs.shape) == 3:
-            loss = self.cross_entropy(log_probs.permute(0,2,1), batch['S'])
-            loss = (loss*mask).sum()/(mask.sum())
-        elif len(log_probs.shape) == 2:
-            if self.hparams.model_name == 'GVP':
-                loss = self.cross_entropy(log_probs, batch.seq)
-            else:
-                loss = self.cross_entropy(log_probs, batch['S'])
-            
-            if self.hparams.model_name == 'AlphaDesign':
-                loss += self.cross_entropy(results['log_probs0'], batch['S'])
-            loss = (loss*mask).sum()/(mask.sum())
+        if self.model.contrastive_pretrain or self.model.contrastive_pretrain_both:
+            loss = 0
+        else:
+            if len(log_probs.shape) == 3:
+                loss = self.cross_entropy(log_probs.permute(0,2,1), batch['S'])
+                loss = (loss*mask).sum()/(mask.sum())
+            elif len(log_probs.shape) == 2:
+                if self.hparams.model_name == 'GVP':
+                    loss = self.cross_entropy(log_probs, batch.seq)
+                else:
+                    # print('log_probs', log_probs.shape)
+                    # print('batch["S"]', batch['S'].shape)
+                    loss = self.cross_entropy(log_probs, batch['S'])
+                loss = (loss*mask).sum()/(mask.sum())
 
         if self.hparams.model_name == 'SBCModel':
             contrastive_loss = results['contrastive_loss']
             loss += contrastive_loss
             # loss = 0.5 * loss + 0.5 * contrastive_loss
-        if self.hparams.model_name == 'SBC2Model':
+        if self.hparams.model_name == 'SBC2Model' or self.hparams.model_name == 'SBC2Mask' or self.hparams.model_name == 'SBC2Revision':
             contrastive_loss = results['contrastive_loss']
             loss += contrastive_loss
-            # loss = 2 * loss + contrastive_loss
-        
-        cmp = log_probs.argmax(dim=-1)==batch['S']
-        recovery = (cmp*mask).sum()/(mask.sum())
+        if self.hparams.model_name == 'Exp':
+            contrastive_loss = results['contrastive_loss']
+            loss += contrastive_loss
+        if self.hparams.model_name == 'UBC2Model':
+            contrastive_loss = results['contrastive_loss']
+            loss += contrastive_loss            
+            
+        if self.model.contrastive_pretrain or self.model.contrastive_pretrain_both:
+            recovery = 0
+        else:
+            cmp = log_probs.argmax(dim=-1)==batch['S']
+            recovery = (cmp*mask).sum()/(mask.sum())
         return loss, recovery
 
 
@@ -1325,9 +1392,18 @@ class MInterface(MInterface_base):
     
 
     def validation_step(self, batch, batch_idx):
+        # deepcopy batch
+        # batch_val = copy.deepcopy(batch)
         loss, recovery = self(batch)
+        bc_gauss_struc_only_loss, bc_gauss_struc_only_recovery = self(batch, mode='validation_biochem_gauss')
+        bc_masktoken_struc_only_loss, bc_masktoken_struc_only_recovery = self(batch, mode='validation_biochem_masktoken')
+
         self.log_dict({"val_loss":loss,
-                       "recovery": recovery})
+                       "recovery": recovery,
+                       "bc_gauss_struc_only_loss": bc_gauss_struc_only_loss,
+                       "bc_gauss_struc_only_recovery": bc_gauss_struc_only_recovery,
+                       "bc_masktoken_struc_only_loss": bc_masktoken_struc_only_loss,
+                       "bc_masktoken_struc_only_recovery": bc_masktoken_struc_only_recovery})
         
         return self.log_dict
 
@@ -1501,6 +1577,18 @@ class MInterface(MInterface_base):
         if self.hparams.model_name == 'SBC2Model':
             from src.models.SBC2_model import SBC2Model
             self.model = SBC2Model(params)
+        if self.hparams.model_name == 'SBC2Mask':
+            from src.models.SBC2_model import SBC2Mask
+            self.model = SBC2Mask(params)
+        if self.hparams.model_name == 'SBC2Revision':
+            from src.models.SBC2_model import SBC2Revision
+            self.model = SBC2Revision(params)
+        if self.hparams.model_name == 'Exp':
+            from src.models.SBC2_model import Exp
+            self.model = Exp(params)
+        if self.hparams.model_name == 'UBC2Model':
+            from src.models.UBC2_model import UBC2Model
+            self.model = UBC2Model(params)
 
         # self.model_device = next(self.model.parameters()).device
 
@@ -1522,3 +1610,18 @@ class MInterface(MInterface_base):
     def gi(self):
         with torch.enable_grad():
             print((torch.tensor(0., requires_grad=True)*2).requires_grad)
+
+
+    def configure_optimizers(self):
+        trainable_params = filter(lambda p: p.requires_grad, self.parameters())
+
+        if hasattr(self.hparams, 'weight_decay'):
+            weight_decay = self.hparams.weight_decay
+        else:
+            weight_decay = 0
+    
+        optimizer_g = torch.optim.AdamW(trainable_params, lr=self.hparams.lr, weight_decay=weight_decay, betas=(0.9, 0.98), eps=1e-8)
+
+        schecular_g = self.get_schedular(optimizer_g, self.hparams.lr_scheduler)
+
+        return [optimizer_g], [{"scheduler": schecular_g, "interval": "step"}]

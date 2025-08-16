@@ -3,18 +3,20 @@ import os
 import sys
 sys.path.append(os.getcwd())
 os.environ["WANDB_API_KEY"] = "2ae9a362061d9366743c759a39692c9c647ca2b7"
-# Set environment variable for CUDA_LAUNCH_BLOCKING
-os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-# Set environment variable for device-side assertions
-os.environ["TORCH_USE_CUDA_DSA"] = "1"
+# # Set environment variable for CUDA_LAUNCH_BLOCKING
+# os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+# # Set environment variable for device-side assertions
+# os.environ["TORCH_USE_CUDA_DSA"] = "1"
 # Set CUDA_VISIBLE_DEVICES to only use GPU 1 and 2
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "4,5,6,7"
 # os.environ['NCCL_P2P_DISABLE'] = '1'
 
 import warnings
 warnings.filterwarnings("ignore")
 
 import argparse
+import yaml
 import torch
 from model_interface import MInterface
 from data_interface import DInterface
@@ -39,17 +41,19 @@ def create_parser():
     # Set-up parameters
     parser.add_argument('--res_dir', default='./train/results', type=str)
     # parser.add_argument('--ex_name', default='SurfProPiFold', type=str)
-    parser.add_argument('--ex_name', default='gpe-correct-SBC2-sum3-minlrdiv1-bs4-lr00002-epoch20', type=str)
+    # parser.add_argument('--ex_name', default='gpe-correct-SBC2-sum3-minlrdiv1-bs4-lr00002-epoch20', type=str)
+    # parser.add_argument('--ex_name', default='ncs-revision-exp-gt8-lr0.0002', type=str)
+    parser.add_argument('--ex_name', default='ncs-revision-sbc2revision-gt8-modalmask100gauss-lr0.0002-rmnan', type=str)
     parser.add_argument('--check_val_every_n_epoch', default=1, type=int)
     
     
     # parser.add_argument('--dataset', default='CATH4.2SurfProPiFold') # AF2DB_dataset, CATH_dataset
     parser.add_argument('--dataset', default='CATH4.2SurfProPiFoldDense') # AF2DB_dataset, CATH_dataset
-    parser.add_argument('--model_name', default='SBC2Model', 
+    parser.add_argument('--model_name', default='UBC2Model', 
         choices=['StructGNN', 'GraphTrans', 'GVP', 'GCA', 'AlphaDesign', 'ESMIF', 'PiFold', 
                  'ProteinMPNN', 'KWDesign', 'E3PiFold', 'SurfProPiFold', 'SurfProPiFoldSurfaceOnly',
                  'SurfProPiFoldDense', 'TestModel0831', 'TestModel0904', 'TestModel0907',
-                 'SBModel', 'SBCModel', 'SBC2Model'])
+                 'SBModel', 'SBCModel', 'SBC2Model', 'SBC2Mask', 'SBC2Revision', 'Exp', 'UBC2Model'])
     parser.add_argument('--lr', default=0.0002, type=float, help='Learning rate')
     # parser.add_argument('--lr', default=0.0005, type=float, help='Learning rate')
     parser.add_argument('--lr_scheduler', default='onecycle')
@@ -76,7 +80,33 @@ def create_parser():
     # parser.add_argument('--checkpoint_path', default='./train/results/ablat-hydro-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=18-recovery=0.485.ckpt', type=str, help='Path to a checkpoint to resume training')
     parser.add_argument('--checkpoint_path', default=None, type=str, help='Path to a checkpoint to resume training')
 
+    parser.add_argument('--contrastive_pretrain', default=False, type=bool)
+
     args = parser.parse_args()
+    return args
+
+
+def load_yaml_config_simple(args):
+    """Load YAML config and update args for existing parameters only."""
+    yaml_path = f"./src/models/configs/{args.model_name}.yaml"
+    
+    if os.path.exists(yaml_path):
+        print(f"Loading config from {yaml_path}")
+        with open(yaml_path, 'r') as f:
+            yaml_config = yaml.safe_load(f)
+        
+        # Only update args that already exist
+        updated_params = []
+        for key, value in yaml_config.items():
+            if hasattr(args, key):
+                setattr(args, key, value)
+                updated_params.append(key)
+        
+        if updated_params:
+            print(f"Updated parameters from YAML: {updated_params}")
+    else:
+        print(f"Config file {yaml_path} not found, using defaults")
+    
     return args
 
 
@@ -128,6 +158,10 @@ def load_callbacks(args):
 
 if __name__ == "__main__":
     args = create_parser()
+    
+    # Load YAML config and update existing parameters
+    args = load_yaml_config_simple(args)
+    
     pl.seed_everything(args.seed)
     
     data_module = DInterface(**vars(args))
@@ -174,7 +208,8 @@ if __name__ == "__main__":
     # trainer.fit(model, data_module)
     # Use resume_from_checkpoint directly in the fit method
     if args.checkpoint_path:
-        trainer.fit(model, data_module, ckpt_path=args.checkpoint_path)
+        # trainer.fit(model, data_module, ckpt_path=args.checkpoint_path)
+        trainer.fit(model, data_module)
     else:
         trainer.fit(model, data_module)
     

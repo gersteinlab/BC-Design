@@ -52,7 +52,7 @@ class DInterface(DInterface_base):
     def setup(self, stage=None):
         from src.datasets.featurizer import (featurize_AF, featurize_GTrans, featurize_GVP,
                          featurize_ProteinMPNN, featurize_Inversefolding, featurize_SurfProPiFold, featurize_TestModel0904,
-                         featurize_TestModel0907, featurize_SBModel, featurize_SBModel1, featurize_SBC2Model)
+                         featurize_TestModel0907, featurize_SBModel, featurize_SBModel1, featurize_SBC2Model, featurize_UBC2Model)
         if self.hparams.model_name in ['AlphaDesign', 'PiFold', 'KWDesign', 'GraphTrans', 'StructGNN', 'GCA', 'E3PiFold']:
             self.collate_fn = featurize_GTrans
         elif self.hparams.model_name == 'GVP':
@@ -73,8 +73,12 @@ class DInterface(DInterface_base):
             # self.collate_fn = featurize_SBModel1
         elif self.hparams.model_name == 'SBCModel':
             self.collate_fn = featurize_SBModel
-        elif self.hparams.model_name == 'SBC2Model':
+        elif self.hparams.model_name == 'SBC2Model' or self.hparams.model_name == 'SBC2Mask' or self.hparams.model_name == 'SBC2Revision':
             self.collate_fn = featurize_SBC2Model
+        elif self.hparams.model_name == 'Exp':
+            self.collate_fn = featurize_SBC2Model
+        elif self.hparams.model_name == 'UBC2Model':
+            self.collate_fn = featurize_UBC2Model().featurize
     
         # Assign train/val datasets for use in dataloaders
         if stage == 'fit' or stage is None:
@@ -140,7 +144,14 @@ class DInterface(DInterface_base):
             from src.datasets.cath_dataset import CATHDatasetSurfProPiFoldDenseLarge
             self.data_module = CATHDatasetSurfProPiFoldDenseLarge
             self.hparams['version'] = 4.2
-            self.hparams['path'] = osp.join(self.hparams.data_root, 'cath4.2surfpropifold-dense')
+            self.hparams['path'] = osp.join(self.hparams.data_root, 'cath4.2')
+
+        if name == 'CATHAFDB':
+            from src.datasets.cathafdb_dataset import CATHAFDBDataset
+            self.data_module = CATHAFDBDataset
+            self.hparams['version'] = 4.2
+            self.hparams['path_cath'] = osp.join(self.hparams.data_root, 'cath4.2')
+            self.hparams['path_afdb'] = osp.join(self.hparams.data_root, 'afdb-large4000')
 
         if name == 'TS50':
             from src.datasets.ts_dataset  import TS50Dataset

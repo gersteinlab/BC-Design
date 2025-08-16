@@ -8,6 +8,7 @@ from .main_utils import (set_seed, print_log, output_namespace, check_dir, get_d
                          count_parameters, measure_throughput, load_config, update_config, weights_to_cpu,
                          init_dist, get_dist_info)
 from .parser import create_parser
+from .affine_tools import Rigid, Rotation, get_interact_feats
 
 __all__ = [
     'Config', 'check_file_exist', 'create_parser',
@@ -16,4 +17,5 @@ __all__ = [
     'gather_edges', 'gather_nodes', '_quaternions', 'cuda',
     'set_seed', 'print_log', 'output_namespace', 'check_dir', 'get_dataset', 'count_parameters',
     'measure_throughput', 'load_config', 'update_config', 'weights_to_cpu', 'init_dist', 'get_dist_info',
+    'Rigid', 'Rotation', 'get_interact_feats'
 ]

@@ -386,4 +386,4 @@ def main(dataset='afdb2000'):
 
 
 
-combined_data = main('afdb2000')
+combined_data = main('afdb-large4000')
