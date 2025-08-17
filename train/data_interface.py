@@ -103,44 +103,7 @@ class DInterface(DInterface_base):
 
     def load_data_module(self):
         name = self.hparams.dataset
-        if name == 'AF2DB':
-            from src.datasets.AF2DB_dataset_lmdb import Af2dbDataset
-            self.data_module = Af2dbDataset
-        
-        if name == 'TS':
-            from src.datasets.ts_dataset  import TSDataset
-            self.data_module = TSDataset
-            self.hparams['path'] = osp.join(self.hparams.data_root, 'ts')
-        
-        if name == 'CASP15':
-            from src.datasets.casp_dataset  import CASPDataset
-            self.data_module = CASPDataset
-            self.hparams['path'] = osp.join(self.hparams.data_root, 'casp15')
-        
         if name == 'CATH4.2':
-            from src.datasets.cath_dataset import CATHDataset
-            self.data_module = CATHDataset
-            self.hparams['version'] = 4.2
-            self.hparams['path'] = osp.join(self.hparams.data_root, 'cath4.2')
-            
-        if name == 'CATH4.3':
-            from src.datasets.cath_dataset import CATHDataset
-            self.data_module = CATHDataset
-            self.hparams['version'] = 4.3
-            self.hparams['path'] = osp.join(self.hparams.data_root, 'cath4.3')
-        
-        if name == 'MPNN':
-            from src.datasets.mpnn_dataset import MPNNDataset
-            self.data_module = MPNNDataset
-
-        if name == 'CATH4.2SurfProPiFold':
-            from src.datasets.cath_dataset import CATHDatasetSurfProPiFold
-            self.data_module = CATHDatasetSurfProPiFold
-            self.hparams['version'] = 4.2
-            self.hparams['path'] = osp.join(self.hparams.data_root, 'cath4.2surfpropifold')
-            # self.hparams['path'] = osp.join(self.hparams.data_root, 'cath4.2surfpropifold-connection')
-
-        if name == 'CATH4.2SurfProPiFoldDense':
             from src.datasets.cath_dataset import CATHDatasetSurfProPiFoldDenseLarge
             self.data_module = CATHDatasetSurfProPiFoldDenseLarge
             self.hparams['version'] = 4.2
