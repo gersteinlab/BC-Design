@@ -163,7 +163,8 @@ alphafolddb/
 cath_test_82/
 figures/
 
-TMscore*
+TMscore.cpp
+TMscore.f
 
 cath42_82.zip
 BC-Design.ckpt
