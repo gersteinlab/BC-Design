@@ -573,6 +573,10 @@ class MInterface(MInterface_base):
         log_probs, mask = results['log_probs'], batch['mask']
         batch_ids = batch['batch_id']
 
+        # X = batch['X']
+        # sparse_idx = mask.nonzero() 
+        # X = X[sparse_idx[:,0], sparse_idx[:,1], :, :]
+
         device = log_probs.device
 
         # Convert mask to boolean for indexing
@@ -703,7 +707,7 @@ class MInterface(MInterface_base):
             # Check if the ground truth PDB exists
             if not os.path.exists(gt_pdb_path):
                 # Create the ground truth PDB from batch['X'] and amino_acid_sequence
-                gt_coords = batch['X'][sample_mask][mask_sample].cpu().numpy()
+                gt_coords = batch['X_flattened'][sample_mask][mask_sample].cpu().numpy()
 
                 # Create the protein data structure
                 protein_data = {
@@ -748,7 +752,7 @@ class MInterface(MInterface_base):
             pred_structure = parser.get_structure('structure', pdb_io)
             pred_ca_atoms = get_ca_atoms_from_struc(pred_structure)
 
-            gt_ca_coords = batch['X'][sample_mask][mask_sample][:, 1, :].cpu().numpy()
+            gt_ca_coords = batch['X_flattened'][sample_mask][mask_sample][:, 1, :].cpu().numpy()
             gt_ca_atoms = create_atoms_from_coords(gt_ca_coords)
 
             # Perform the alignment
@@ -763,15 +767,15 @@ class MInterface(MInterface_base):
             tmscore = torch.tensor(calculate_tm_score(pred_pdb_path, gt_pdb_path), device=device)
             tmscores.append(tmscore)
 
-            # tm-score on cath 4.2 82
-            cath_42_82_df = pd.read_excel('./cath_test_82/CATH42_82.xlsx')
-            cath_42_82_name_list = cath_42_82_df['name'].tolist()
-            # Add a '.' to the 4th position of each string
-            cath_42_82_name_list = [name[:4] + '.' + name[4:] for name in cath_42_82_name_list]
-            if sample_title in cath_42_82_name_list:
-                self.tmscores_cath42_82.append(tmscore)
-                self.plddt_ca_cath42_82.append(plddt_ca)
-                self.plddt_cath42_82.append(plddt)
+            # # tm-score on cath 4.2 82
+            # cath_42_82_df = pd.read_excel('./cath_test_82/CATH42_82.xlsx')
+            # cath_42_82_name_list = cath_42_82_df['name'].tolist()
+            # # Add a '.' to the 4th position of each string
+            # cath_42_82_name_list = [name[:4] + '.' + name[4:] for name in cath_42_82_name_list]
+            # if sample_title in cath_42_82_name_list:
+            #     self.tmscores_cath42_82.append(tmscore)
+            #     self.plddt_ca_cath42_82.append(plddt_ca)
+            #     self.plddt_cath42_82.append(plddt)
 
             # recovery for surface/core region
             # 1. 解析 PDB 文件
@@ -841,7 +845,7 @@ class MInterface(MInterface_base):
                 self.core_nssrs.append(nssr_score)
 
             # contact order
-            contact_order = calculate_contact_order(batch['X'][sample_mask][mask_sample][:, 1, :])
+            contact_order = calculate_contact_order(batch['X_flattened'][sample_mask][mask_sample][:, 1, :])
             self.contact_orders.append(contact_order)
 
             # metrics for different length
@@ -1031,13 +1035,12 @@ class MInterface(MInterface_base):
         self.log("test_surface_recovery", avg_surface_recovery, on_step=False, on_epoch=True, sync_dist=True, reduce_fx="mean")
         self.log("test_core_recovery", avg_core_recovery, on_step=False, on_epoch=True, sync_dist=True, reduce_fx="mean")
 
-        avg_tmscore_cath42_82 = compute_avg(self.tmscores_cath42_82)
-        avg_plddt_ca_cath42_82 = compute_avg(self.plddt_ca_cath42_82)
-        avg_plddt_cath42_82 = compute_avg(self.plddt_cath42_82)
-        print('number of samples in cath_42_82: ', len(self.tmscores_cath42_82))
-        self.log("test_tmscore_cath42_82", avg_tmscore_cath42_82, on_epoch=True, sync_dist=True)
-        self.log("test_plddt_ca_cath42_82", avg_plddt_ca_cath42_82, on_epoch=True, sync_dist=True)
-        self.log("test_plddt_cath42_82", avg_plddt_cath42_82, on_epoch=True, sync_dist=True)
+        # avg_tmscore_cath42_82 = compute_avg(self.tmscores_cath42_82)
+        # avg_plddt_ca_cath42_82 = compute_avg(self.plddt_ca_cath42_82)
+        # avg_plddt_cath42_82 = compute_avg(self.plddt_cath42_82)
+        # self.log("test_tmscore_cath42_82", avg_tmscore_cath42_82, on_epoch=True, sync_dist=True)
+        # self.log("test_plddt_ca_cath42_82", avg_plddt_ca_cath42_82, on_epoch=True, sync_dist=True)
+        # self.log("test_plddt_cath42_82", avg_plddt_cath42_82, on_epoch=True, sync_dist=True)
 
         # Aggregate metrics for sequences with length ≤ 100
         avg_recovery_len_100 = compute_avg(self.recovery_len_100)

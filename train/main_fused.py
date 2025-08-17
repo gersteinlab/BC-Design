@@ -48,7 +48,7 @@ def create_parser():
     
     
     # parser.add_argument('--dataset', default='CATH4.2SurfProPiFold') # AF2DB_dataset, CATH_dataset
-    parser.add_argument('--dataset', default='CATH4.2SurfProPiFoldDense') # AF2DB_dataset, CATH_dataset
+    parser.add_argument('--dataset', default='CATH4.2') # AF2DB_dataset, CATH_dataset
     parser.add_argument('--model_name', default='UBC2Model', 
         choices=['StructGNN', 'GraphTrans', 'GVP', 'GCA', 'AlphaDesign', 'ESMIF', 'PiFold', 
                  'ProteinMPNN', 'KWDesign', 'E3PiFold', 'SurfProPiFold', 'SurfProPiFoldSurfaceOnly',

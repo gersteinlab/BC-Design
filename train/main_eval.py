@@ -25,99 +25,9 @@ from pytorch_lightning.strategies import DDPStrategy
 torch.autograd.set_detect_anomaly(True)
 
 def create_parser():
-    # # our best
-    # checkpoint_path = './train/results/SBC2-sum3-minlrdiv1-bs4-lr00002-epoch10/checkpoints/best-epoch=16-recovery=0.877.ckpt'
-    # ex_name = 'SBC2-sum3-minlrdiv1-bs4-lr00002-epoch20-test'
-    # batch_size = 1
-
-    # our best (1)
-    checkpoint_path = './train/results/gpe-correct-SBC2-sum3-minlrdiv1-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.879.ckpt'
-    ex_name = 'gpe-correct-SBC2-sum3-minlrdiv1-bs4-lr00002-epoch20-test'
-    batch_size = 1    
-
-
-
-    # ablation
-    # checkpoint_path = './train/results/ablat-ssc-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.386.ckpt'
-    # ex_name = checkpoint_path.split('/')[3]
-    # batch_size = 2
-
-    # checkpoint_path = './train/results/ablat-e&v-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.836.ckpt'
-    # ex_name = 'ablat-ev-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 1
-
-    # checkpoint_path = './train/results/ablat-hydro&charge-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.322.ckpt'
-    # ex_name = 'ablat-hydrocharge-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 1
-
-    # checkpoint_path = './train/results/ablat-hydro-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=18-recovery=0.485.ckpt'
-    # ex_name = 'ablat-hydro-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2
-
-    # checkpoint_path = './train/results/ablat-charge-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.824.ckpt'
-    # ex_name = 'ablat-charge-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 1
-
-    # checkpoint_path = './train/results/ablat-e_c-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.856.ckpt'
-    # ex_name = 'ablat-e_c-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2
-
-    # checkpoint_path = './train/results/ablat-v-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.848.ckpt'
-    # ex_name = 'ablat-v-SBC2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2
-
-
-    # hyperparam exp
-    # gtlayers
-    # checkpoint_path = './train/results/SBC2-gtlayers1-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.865.ckpt'
-    # ex_name = 'SBC2-gtlayers1-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2
-
-    # checkpoint_path = './train/results/SBC2-gtlayers2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.870.ckpt'
-    # ex_name = 'SBC2-gtlayers2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2
-
-    # checkpoint_path = './train/results/SBC2-gtlayers4-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.871.ckpt'
-    # ex_name = 'SBC2-gtlayers4-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2
-
-    # checkpoint_path = './train/results/SBC2-gtlayers5-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.870.ckpt'
-    # ex_name = 'SBC2-gtlayers5-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2
-
-    # checkpoint_path = './train/results/SBC2-gtlayers6-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.869.ckpt'
-    # ex_name = 'SBC2-gtlayers6-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2
-
-    # checkpoint_path = './train/results/SBC2-gtlayers7-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.868.ckpt'
-    # ex_name = 'SBC2-gtlayers7-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2
-
-    # mha
-    # checkpoint_path = './train/results/SBC2-gtlayers3-mha2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.864.ckpt'
-    # ex_name = 'SBC2-gtlayers3-mha2-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2
-
-    # checkpoint_path = './train/results/SBC2-gtlayers3-mha3-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.868.ckpt'
-    # ex_name = 'SBC2-gtlayers3-mha3-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2
-
-    # checkpoint_path = './train/results/SBC2-gtlayers3-mha4-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.841.ckpt'
-    # ex_name = 'SBC2-gtlayers3-mha4-loss1,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2
-
-    # loss weights
-    # checkpoint_path = './train/results/SBC2-loss1,0.25,1-a100-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.873.ckpt'
-    # ex_name = 'SBC2-loss1,0.25,1-a100-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2 
-
-    # checkpoint_path = './train/results/SBC2-loss1,1,0.25-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.869.ckpt'
-    # ex_name = 'SBC2-loss1,1,0.25-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2   
-
-    # checkpoint_path = './train/results/SBC2-loss2,1,1-minlrdiv1c-bs4-lr00002-epoch20/checkpoints/best-epoch=19-recovery=0.872.ckpt'
-    # ex_name = 'SBC2-loss2,1,1-minlrdiv1c-bs4-lr00002-epoch20'
-    # batch_size = 2    
+    checkpoint_path = './train/results/ncs-revision-ubc2-fullfinaltrain-strucmask0.1-bcmaskmax1.0-bs2-lr0.00002-epoch50-encoder12-bc2/checkpoints/last.ckpt'
+    ex_name = 'UBC2Model'
+    batch_size = 2
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--res_dir', default='./train/results', type=str)
@@ -127,13 +37,9 @@ def create_parser():
     parser.add_argument('--dataset', default='CATH4.2SurfProPiFoldDense')
     # parser.add_argument('--dataset', default='TS50')
     # parser.add_argument('--dataset', default='TS500')
-    # parser.add_argument('--dataset', default='CATH4.2')
     # parser.add_argument('--dataset', default='AFDB2000')
-    parser.add_argument('--model_name', default='SBC2Model',
-                        choices=['StructGNN', 'GraphTrans', 'GVP', 'GCA', 'AlphaDesign', 'ESMIF', 'PiFold', 
-                                 'ProteinMPNN', 'KWDesign', 'E3PiFold', 'SurfProPiFold', 'SurfProPiFoldSurfaceOnly',
-                                 'SurfProPiFoldDense', 'TestModel0831', 'TestModel0904', 'TestModel0907',
-                                 'SBModel', 'SBCModel', 'SBC2Model'])
+    parser.add_argument('--model_name', default='UBC2Model',
+                        choices=['UBC2Model', 'SBC2Model'])
     parser.add_argument('--lr', default=0.0002, type=float, help='Learning rate')
     parser.add_argument('--lr_scheduler', default='onecycle')
     parser.add_argument('--offline', default=0, type=int)
@@ -156,6 +62,8 @@ def create_parser():
 
     # Checkpoint parameter
     parser.add_argument('--checkpoint_path', default=checkpoint_path, type=str, help='Path to a checkpoint to resume testing')
+
+    parser.add_argument('--contrastive_pretrain', default=False, type=bool)
 
     args = parser.parse_args()
     return args
