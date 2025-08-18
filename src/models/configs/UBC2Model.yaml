@@ -1,0 +1,45 @@
+res_dir: ./train/results
+ex_name: ncs-revision-ubc2-cathafdb-fashion4ifstruconly-strucmask0.1-bs1-g1l1-lr0.0002-epoch50-encoder12-bc2
+dataset: CATHAFDB
+model_name: UBC2Model
+lr: 0.0002
+lr_scheduler: onecycle
+# lr_scheduler: cosine
+offline: 0
+seed: 112
+use_auxliary_data: 0
+pretrained_path: ''
+batch_size: 1
+num_workers: 0
+min_length: 40
+data_root: ./data/
+epoch: 50
+augment_eps: 0.0
+geo_layer: 3
+attn_layer: 3
+node_layer: 3
+edge_layer: 3
+encoder_layer: 12
+hidden_dim: 128
+dropout: 0.0
+k_neighbors: 30
+virtual_frame_num: 8
+virtual_atom_num: 24
+bc_encoder_layer: 2
+
+mask_rate: 0.1
+bc_mask_max_rate: .0
+bc_mask_how: token
+modal_mask_ratio: 0.
+
+contrastive_learning: false
+contrastive_pretrain: false
+contrastive_pretrain_both: false
+contrastive_loss_global_alpha: 1.
+contrastive_loss_local_alpha: 1.
+
+if_struc_only: true
+
+if_warmup_train: false
+
+checkpoint_path: "./train/results/ncs-revision-ubc2-cathafdb-contrastpreboth-bs1-g1l1-lr0.0002-epoch50-encoder12-bc2/checkpoints/best-epoch=14-recovery=0.000.ckpt"

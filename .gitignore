@@ -116,7 +116,7 @@ venv.bak/
 bash
 data
 data-before0601
-configs
+/configs
 data_set
 results/
 gaozhangyang/
