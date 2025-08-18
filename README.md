@@ -104,7 +104,7 @@ To train the model or run inference with the pre-trained checkpoint, you need to
 1.  Navigate to the OSF project page: [https://osf.io/pwbhg/files/osfstorage](https://osf.io/pwbhg/files/osfstorage)
 2.  Download the following files into the `BC-Design` folder (the main directory cloned from GitHub):
       * `data.zip` (contains data for training and inference)
-      * `BC-Design.ckpt` (the pre-trained model checkpoint for inference)
+      * `UBC2Model.ckpt` (the pre-trained model checkpoint for inference)
 3.  Once downloaded, unzip the data file:
     ```shell
     unzip data.zip
@@ -113,7 +113,7 @@ To train the model or run inference with the pre-trained checkpoint, you need to
 
 As an alternative, you can also run the following commands:
 ```shell
-wget https://osf.io/download/683dcbe71618e6327085b39f/ -O BC-Design.ckpt
+wget https://osf.io/download/683dcbe71618e6327085b39f/ -O UBC2Model.ckpt
 wget https://osf.io/download/683dd27930c7903aaf85b1f7/ -O data.zip
 unzip data.zip
 ````
@@ -158,11 +158,11 @@ python train/main_eval.py --dataset TS500
 python train/main_eval.py --dataset AFDB2000
 ```
 
-The `train/main_eval.py` script is used to evaluate the pre-trained BC-Design model on test datasets. It loads the specified dataset and the pre-trained model checkpoint (`BC-Design.ckpt` by default) to perform inference and report evaluation metrics.
+The `train/main_eval.py` script is used to evaluate the pre-trained BC-Design model on test datasets. It loads the specified dataset and the pre-trained model checkpoint (`UBC2Model.ckpt` by default) to perform inference and report evaluation metrics.
 
 **Key functionalities of `main_eval.py`:**
 -   **Dataset Selection:** You can specify the dataset for evaluation using the `--dataset` argument (e.g., `CATH4.2`, `TS50`, `TS500`, `AFDB2000`).
--   **Checkpoint Loading:** It loads a pre-trained model from the path specified by `--checkpoint_path` (defaults to `./BC-Design.ckpt`).
+-   **Checkpoint Loading:** It loads a pre-trained model from the path specified by `--checkpoint_path` (defaults to `./UBC2Model.ckpt`).
 -   **Evaluation Metrics:** The script calculates and displays various performance metrics such as test loss, sequence recovery, perplexity, pLDDT, and TM-score.
 -   **Configurable Parameters:** Several aspects of the evaluation can be configured through command-line arguments, including:
     * `--res_dir`: Directory to store results.
