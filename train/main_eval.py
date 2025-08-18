@@ -2,9 +2,7 @@ import datetime
 import os
 import sys
 sys.path.append(os.getcwd())
-os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-os.environ["TORCH_USE_CUDA_DSA"] = "1"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # os.environ['NCCL_P2P_DISABLE'] = '1'
 
 import warnings
@@ -14,14 +12,9 @@ import argparse
 import torch
 from model_interface import MInterface
 from data_interface import DInterface
-from src.tools.logger import SetupCallback, BackupCodeCallback
-import math
-from shutil import ignore_patterns
 
 import pytorch_lightning as pl
 from pytorch_lightning.trainer import Trainer
-import pytorch_lightning.callbacks as plc
-from pytorch_lightning.strategies import DDPStrategy
 torch.autograd.set_detect_anomaly(True)
 
 def create_parser():
@@ -32,12 +25,8 @@ def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--res_dir', default='./train/results', type=str)
     parser.add_argument('--ex_name', default=ex_name, type=str)
-    # parser.add_argument('--ex_name', default='PiFold-test', type=str)
     parser.add_argument('--check_val_every_n_epoch', default=1, type=int)
-    parser.add_argument('--dataset', default='CATH4.2SurfProPiFoldDense')
-    # parser.add_argument('--dataset', default='TS50')
-    # parser.add_argument('--dataset', default='TS500')
-    # parser.add_argument('--dataset', default='AFDB2000')
+    parser.add_argument('--dataset', default='CATH4.2')
     parser.add_argument('--model_name', default='UBC2Model',
                         choices=['UBC2Model', 'SBC2Model'])
     parser.add_argument('--lr', default=0.0002, type=float, help='Learning rate')

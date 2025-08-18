@@ -370,10 +370,6 @@ class MInterface(MInterface_base):
         self.surface_nssrs = []
         self.core_nssrs = []
 
-        self.tmscores_cath42_82 = []
-        self.plddt_ca_cath42_82 = []
-        self.plddt_cath42_82 = []
-
         # Metrics for sequences with length ≤ 100
         self.recovery_len_100 = []
         self.plddt_ca_len_100 = []
@@ -381,8 +377,6 @@ class MInterface(MInterface_base):
         self.rmsd_len_100 = []
         self.tmscore_len_100 = []
         self.nssr_len_100 = []
-        self.hydrophobicity_rmsd_len_100 = []  # Hydrophobicity RMSD for length ≤ 100
-        self.charge_rmsd_len_100 = []          # Charge RMSD for length ≤ 100
 
         # Metrics for sequences with length 100–300
         self.recovery_len_100_300 = []
@@ -391,8 +385,6 @@ class MInterface(MInterface_base):
         self.rmsd_len_100_300 = []
         self.tmscore_len_100_300 = []
         self.nssr_len_100_300 = []
-        self.hydrophobicity_rmsd_len_100_300 = []  # Hydrophobicity RMSD for length 100–300
-        self.charge_rmsd_len_100_300 = []          # Charge RMSD for length 100–300
 
         # Metrics for sequences with length > 300
         self.recovery_len_300 = []
@@ -401,8 +393,6 @@ class MInterface(MInterface_base):
         self.rmsd_len_300 = []
         self.tmscore_len_300 = []
         self.nssr_len_300 = []
-        self.hydrophobicity_rmsd_len_300 = []  # Hydrophobicity RMSD for length > 300
-        self.charge_rmsd_len_300 = []          # Charge RMSD for length > 300
 
         # Initialize lists to store metrics for each CATH class
         # Initialize metrics for CATH class Alpha
@@ -412,8 +402,6 @@ class MInterface(MInterface_base):
         self.rmsd_alpha = []
         self.tmscore_alpha = []
         self.nssr_alpha = []
-        self.hydrophobicity_rmsd_alpha = []  # New
-        self.charge_rmsd_alpha = []          # New
 
         # Initialize metrics for CATH class Beta
         self.recovery_beta = []
@@ -422,8 +410,6 @@ class MInterface(MInterface_base):
         self.rmsd_beta = []
         self.tmscore_beta = []
         self.nssr_beta = []
-        self.hydrophobicity_rmsd_beta = []  # New
-        self.charge_rmsd_beta = []          # New
 
         # Initialize metrics for CATH class AlphaBeta
         self.recovery_alpha_beta = []
@@ -432,8 +418,6 @@ class MInterface(MInterface_base):
         self.rmsd_alpha_beta = []
         self.tmscore_alpha_beta = []
         self.nssr_alpha_beta = []
-        self.hydrophobicity_rmsd_alpha_beta = []  # New
-        self.charge_rmsd_alpha_beta = []          # New
 
         # Initialize metrics for CATH class FewSecondaryStructures
         self.recovery_few_secondary_structures = []
@@ -442,8 +426,6 @@ class MInterface(MInterface_base):
         self.rmsd_few_secondary_structures = []
         self.tmscore_few_secondary_structures = []
         self.nssr_few_secondary_structures = []
-        self.hydrophobicity_rmsd_few_secondary_structures = []  # New
-        self.charge_rmsd_few_secondary_structures = []          # New
 
         # Initialize metrics for CATH class Other
         self.recovery_other = []
@@ -452,8 +434,6 @@ class MInterface(MInterface_base):
         self.rmsd_other = []
         self.tmscore_other = []
         self.nssr_other = []
-        self.hydrophobicity_rmsd_other = []  # New
-        self.charge_rmsd_other = []          # New
 
         if self.hparams.checkpoint_path and os.path.exists(self.hparams.checkpoint_path):
             if self.hparams.contrastive_pretrain:
@@ -591,10 +571,6 @@ class MInterface(MInterface_base):
         tmscores = []
         nssr_scores = []  # To store NSSR scores for each sample
 
-        # Initialize lists to store biochemical RMSDs
-        hydrophobicity_rmsds = []
-        charge_rmsds = []
-
         # Define directory to save the PDBs
         pdb_save_directory = f"predicted_pdb/{self.hparams.ex_name}/{self.hparams.dataset}"
         gt_pdb_save_directory = f"gt_pdb/{self.hparams.dataset}"
@@ -641,40 +617,6 @@ class MInterface(MInterface_base):
             
             # Join tokens into a single string and remove any special tokens if needed
             pred_amino_acid_sequence = "".join(pred_tokens)
-
-            # biochem rmsds
-            # Initialize lists to hold hydrophobicity and charge values for RMSD calculations
-            gt_hydrophobicity = []
-            pred_hydrophobicity = []
-            gt_charge = []
-            pred_charge = []
-
-            # Loop through each pair of residues in the predicted and ground truth sequences
-            for gt_residue, pred_residue in zip(gt_amino_acid_sequence, pred_amino_acid_sequence):
-                # Extract hydrophobicity and charge values from bio_feat_dict
-                if gt_residue in bio_feat_dict['hydrophobicity'] and pred_residue in bio_feat_dict['hydrophobicity']:
-                    gt_hydrophobicity.append(bio_feat_dict['hydrophobicity'][gt_residue])
-                    pred_hydrophobicity.append(bio_feat_dict['hydrophobicity'][pred_residue])
-
-                if gt_residue in bio_feat_dict['charge'] and pred_residue in bio_feat_dict['charge']:
-                    gt_charge.append(bio_feat_dict['charge'][gt_residue])
-                    pred_charge.append(bio_feat_dict['charge'][pred_residue])
-
-            # Calculate hydrophobicity RMSD
-            if len(gt_hydrophobicity) > 0:
-                hydrophobicity_diff = torch.tensor(gt_hydrophobicity) - torch.tensor(pred_hydrophobicity)
-                hydrophobicity_rmsd = torch.sqrt(torch.mean(hydrophobicity_diff ** 2))
-                hydrophobicity_rmsds.append(hydrophobicity_rmsd)
-            else:
-                hydrophobicity_rmsd = None
-
-            # Calculate charge RMSD
-            if len(gt_charge) > 0:
-                charge_diff = torch.tensor(gt_charge) - torch.tensor(pred_charge)
-                charge_rmsd = torch.sqrt(torch.mean(charge_diff.float() ** 2))
-                charge_rmsds.append(charge_rmsd)
-            else:
-                charge_rmsd = None
 
             # nssr
             # BLOSUM62-based NSSR calculation
@@ -767,16 +709,6 @@ class MInterface(MInterface_base):
             tmscore = torch.tensor(calculate_tm_score(pred_pdb_path, gt_pdb_path), device=device)
             tmscores.append(tmscore)
 
-            # # tm-score on cath 4.2 82
-            # cath_42_82_df = pd.read_excel('./cath_test_82/CATH42_82.xlsx')
-            # cath_42_82_name_list = cath_42_82_df['name'].tolist()
-            # # Add a '.' to the 4th position of each string
-            # cath_42_82_name_list = [name[:4] + '.' + name[4:] for name in cath_42_82_name_list]
-            # if sample_title in cath_42_82_name_list:
-            #     self.tmscores_cath42_82.append(tmscore)
-            #     self.plddt_ca_cath42_82.append(plddt_ca)
-            #     self.plddt_cath42_82.append(plddt)
-
             # recovery for surface/core region
             # 1. 解析 PDB 文件
             parser = PDB.PDBParser()
@@ -861,10 +793,6 @@ class MInterface(MInterface_base):
                 self.rmsd_len_100.append(rmsd)
                 self.tmscore_len_100.append(tmscore)
                 self.nssr_len_100.append(nssr_score)
-                if hydrophobicity_rmsd is not None:
-                    self.hydrophobicity_rmsd_len_100.append(hydrophobicity_rmsd)
-                if charge_rmsd is not None:
-                    self.charge_rmsd_len_100.append(charge_rmsd)
             elif 100 < seq_length <= 300:
                 self.recovery_len_100_300.append(recovery)
                 self.plddt_ca_len_100_300.append(plddt_ca)
@@ -872,10 +800,6 @@ class MInterface(MInterface_base):
                 self.rmsd_len_100_300.append(rmsd)
                 self.tmscore_len_100_300.append(tmscore)
                 self.nssr_len_100_300.append(nssr_score)
-                if hydrophobicity_rmsd is not None:
-                    self.hydrophobicity_rmsd_len_100_300.append(hydrophobicity_rmsd)
-                if charge_rmsd is not None:
-                    self.charge_rmsd_len_100_300.append(charge_rmsd)
             else:  # Length > 300
                 self.recovery_len_300.append(recovery)
                 self.plddt_ca_len_300.append(plddt_ca)
@@ -883,10 +807,6 @@ class MInterface(MInterface_base):
                 self.rmsd_len_300.append(rmsd)
                 self.tmscore_len_300.append(tmscore)
                 self.nssr_len_300.append(nssr_score)
-                if hydrophobicity_rmsd is not None:
-                    self.hydrophobicity_rmsd_len_300.append(hydrophobicity_rmsd)
-                if charge_rmsd is not None:
-                    self.charge_rmsd_len_300.append(charge_rmsd)
 
             # residue-level metrics
             gt_tokens_indices = torch.tensor([residue_to_index[residue] for residue in gt_tokens], device=device)
@@ -914,7 +834,7 @@ class MInterface(MInterface_base):
                 self.binary_recalls[residue_type].update(pred_binary, gt_binary)
                 self.binary_f1s[residue_type].update(pred_binary, gt_binary)
 
-            if self.hparams.dataset == 'CATH4.2SurfProPiFoldDense':
+            if self.hparams.dataset == 'CATH4.2':
                 # different cath classes
                 # Get the CATH class for the protein based on the PDB ID
                 pdb_id = sample_title.replace('.', '')[:5]  # Remove '.' and get first 5 chars
@@ -930,10 +850,6 @@ class MInterface(MInterface_base):
                     self.rmsd_alpha.append(rmsd)
                     self.tmscore_alpha.append(tmscore)
                     self.nssr_alpha.append(nssr_score)
-                    if hydrophobicity_rmsd is not None:  # Check if hydrophobicity_rmsd is valid
-                        self.hydrophobicity_rmsd_alpha.append(hydrophobicity_rmsd)
-                    if charge_rmsd is not None:  # Check if charge_rmsd is valid
-                        self.charge_rmsd_alpha.append(charge_rmsd)
 
                 elif cath_class == 'Beta':
                     self.recovery_beta.append(recovery)
@@ -942,10 +858,6 @@ class MInterface(MInterface_base):
                     self.rmsd_beta.append(rmsd)
                     self.tmscore_beta.append(tmscore)
                     self.nssr_beta.append(nssr_score)
-                    if hydrophobicity_rmsd is not None:
-                        self.hydrophobicity_rmsd_beta.append(hydrophobicity_rmsd)
-                    if charge_rmsd is not None:
-                        self.charge_rmsd_beta.append(charge_rmsd)
 
                 elif cath_class == 'AlphaBeta':
                     self.recovery_alpha_beta.append(recovery)
@@ -954,10 +866,6 @@ class MInterface(MInterface_base):
                     self.rmsd_alpha_beta.append(rmsd)
                     self.tmscore_alpha_beta.append(tmscore)
                     self.nssr_alpha_beta.append(nssr_score)
-                    if hydrophobicity_rmsd is not None:
-                        self.hydrophobicity_rmsd_alpha_beta.append(hydrophobicity_rmsd)
-                    if charge_rmsd is not None:
-                        self.charge_rmsd_alpha_beta.append(charge_rmsd)
 
                 elif cath_class == 'FewSecondaryStructures':
                     self.recovery_few_secondary_structures.append(recovery)
@@ -966,10 +874,6 @@ class MInterface(MInterface_base):
                     self.rmsd_few_secondary_structures.append(rmsd)
                     self.tmscore_few_secondary_structures.append(tmscore)
                     self.nssr_few_secondary_structures.append(nssr_score)
-                    if hydrophobicity_rmsd is not None:
-                        self.hydrophobicity_rmsd_few_secondary_structures.append(hydrophobicity_rmsd)
-                    if charge_rmsd is not None:
-                        self.charge_rmsd_few_secondary_structures.append(charge_rmsd)
 
                 else:  # 'Other' class
                     self.recovery_other.append(recovery)
@@ -978,15 +882,9 @@ class MInterface(MInterface_base):
                     self.rmsd_other.append(rmsd)
                     self.tmscore_other.append(tmscore)
                     self.nssr_other.append(nssr_score)
-                    if hydrophobicity_rmsd is not None:
-                        self.hydrophobicity_rmsd_other.append(hydrophobicity_rmsd)
-                    if charge_rmsd is not None:
-                        self.charge_rmsd_other.append(charge_rmsd)
 
         return (
-            losses, recoveries, plddt_ca_list, plddt_list, rmsds, tmscores, nssr_scores, hydrophobicity_rmsds, 
-            charge_rmsds, 
-            # surface_recoveries, core_recoveries,
+            losses, recoveries, plddt_ca_list, plddt_list, rmsds, tmscores, nssr_scores, 
         )
 
 
@@ -1010,11 +908,6 @@ class MInterface(MInterface_base):
         avg_rmsd = torch.stack([x['test_rmsd'] for x in self.test_step_outputs]).mean().to(model_device)
         avg_tmscore = torch.stack([x['test_tmscore'] for x in self.test_step_outputs]).mean().to(model_device)
         avg_nssr_score = torch.stack([x['test_nssr_score'] for x in self.test_step_outputs]).mean().to(model_device)
-        avg_hydrophobicity_rmsd = torch.stack([x['test_hydrophobicity_rmsd'] for x in self.test_step_outputs]).mean().to(model_device)
-        avg_charge_rmsd = torch.stack([x['test_charge_rmsd'] for x in self.test_step_outputs]).mean().to(model_device)
-        # avg_surface_recovery = torch.stack([x['test_surface_recovery'] for x in self.test_step_outputs]).mean().to(model_device)
-        # avg_core_recovery = torch.stack([x['test_core_recovery'] for x in self.test_step_outputs]).mean().to(model_device)
-
         avg_surface_recovery = compute_avg(self.surface_recoveries)
         avg_core_recovery = compute_avg(self.core_recoveries)
 
@@ -1030,17 +923,8 @@ class MInterface(MInterface_base):
         self.log("test_rmsd", avg_rmsd, on_step=False, on_epoch=True, sync_dist=True, reduce_fx="mean")
         self.log("test_tmscore", avg_tmscore, on_step=False, on_epoch=True, sync_dist=True, reduce_fx="mean")
         self.log("test_nssr_score", avg_nssr_score, on_step=False, on_epoch=True, sync_dist=True, reduce_fx="mean")
-        self.log("test_hydrophobicity_rmsd", avg_hydrophobicity_rmsd, on_step=False, on_epoch=True, sync_dist=True, reduce_fx="mean")
-        self.log("test_charge_rmsd", avg_charge_rmsd, on_step=False, on_epoch=True, sync_dist=True, reduce_fx="mean")
         self.log("test_surface_recovery", avg_surface_recovery, on_step=False, on_epoch=True, sync_dist=True, reduce_fx="mean")
         self.log("test_core_recovery", avg_core_recovery, on_step=False, on_epoch=True, sync_dist=True, reduce_fx="mean")
-
-        # avg_tmscore_cath42_82 = compute_avg(self.tmscores_cath42_82)
-        # avg_plddt_ca_cath42_82 = compute_avg(self.plddt_ca_cath42_82)
-        # avg_plddt_cath42_82 = compute_avg(self.plddt_cath42_82)
-        # self.log("test_tmscore_cath42_82", avg_tmscore_cath42_82, on_epoch=True, sync_dist=True)
-        # self.log("test_plddt_ca_cath42_82", avg_plddt_ca_cath42_82, on_epoch=True, sync_dist=True)
-        # self.log("test_plddt_cath42_82", avg_plddt_cath42_82, on_epoch=True, sync_dist=True)
 
         # Aggregate metrics for sequences with length ≤ 100
         avg_recovery_len_100 = compute_avg(self.recovery_len_100)
@@ -1049,8 +933,6 @@ class MInterface(MInterface_base):
         avg_rmsd_len_100 = compute_avg(self.rmsd_len_100)
         avg_tmscore_len_100 = compute_avg(self.tmscore_len_100)
         avg_nssr_score_len_100 = compute_avg(self.nssr_len_100)
-        avg_hydrophobicity_rmsd_len_100 = compute_avg(self.hydrophobicity_rmsd_len_100)  # New
-        avg_charge_rmsd_len_100 = compute_avg(self.charge_rmsd_len_100)  # New
 
         # Aggregate metrics for sequences with length 100–300
         avg_recovery_len_100_300 = compute_avg(self.recovery_len_100_300)
@@ -1059,8 +941,6 @@ class MInterface(MInterface_base):
         avg_rmsd_len_100_300 = compute_avg(self.rmsd_len_100_300)
         avg_tmscore_len_100_300 = compute_avg(self.tmscore_len_100_300)
         avg_nssr_score_len_100_300 = compute_avg(self.nssr_len_100_300)
-        avg_hydrophobicity_rmsd_len_100_300 = compute_avg(self.hydrophobicity_rmsd_len_100_300)  # New
-        avg_charge_rmsd_len_100_300 = compute_avg(self.charge_rmsd_len_100_300)  # New
 
         # Aggregate metrics for sequences with length > 300
         avg_recovery_len_300 = compute_avg(self.recovery_len_300)
@@ -1069,8 +949,6 @@ class MInterface(MInterface_base):
         avg_rmsd_len_300 = compute_avg(self.rmsd_len_300)
         avg_tmscore_len_300 = compute_avg(self.tmscore_len_300)
         avg_nssr_score_len_300 = compute_avg(self.nssr_len_300)
-        avg_hydrophobicity_rmsd_len_300 = compute_avg(self.hydrophobicity_rmsd_len_300)  # New
-        avg_charge_rmsd_len_300 = compute_avg(self.charge_rmsd_len_300)  # New
 
         # Log aggregated metrics for sequences with length ≤ 100
         self.log("test_recovery_len_100", avg_recovery_len_100, on_epoch=True, sync_dist=True)
@@ -1079,8 +957,6 @@ class MInterface(MInterface_base):
         self.log("test_rmsd_len_100", avg_rmsd_len_100, on_epoch=True, sync_dist=True)
         self.log("test_tmscore_len_100", avg_tmscore_len_100, on_epoch=True, sync_dist=True)
         self.log("test_nssr_score_len_100", avg_nssr_score_len_100, on_epoch=True, sync_dist=True)
-        self.log("test_hydrophobicity_rmsd_len_100", avg_hydrophobicity_rmsd_len_100, on_epoch=True, sync_dist=True)  # New
-        self.log("test_charge_rmsd_len_100", avg_charge_rmsd_len_100, on_epoch=True, sync_dist=True)  # New
 
         # Log aggregated metrics for sequences with length 100–300
         self.log("test_recovery_len_100_300", avg_recovery_len_100_300, on_epoch=True, sync_dist=True)
@@ -1089,8 +965,6 @@ class MInterface(MInterface_base):
         self.log("test_rmsd_len_100_300", avg_rmsd_len_100_300, on_epoch=True, sync_dist=True)
         self.log("test_tmscore_len_100_300", avg_tmscore_len_100_300, on_epoch=True, sync_dist=True)
         self.log("test_nssr_score_len_100_300", avg_nssr_score_len_100_300, on_epoch=True, sync_dist=True)
-        self.log("test_hydrophobicity_rmsd_len_100_300", avg_hydrophobicity_rmsd_len_100_300, on_epoch=True, sync_dist=True)  # New
-        self.log("test_charge_rmsd_len_100_300", avg_charge_rmsd_len_100_300, on_epoch=True, sync_dist=True)  # New
 
         # Log aggregated metrics for sequences with length > 300
         self.log("test_recovery_len_300", avg_recovery_len_300, on_epoch=True, sync_dist=True)
@@ -1099,8 +973,6 @@ class MInterface(MInterface_base):
         self.log("test_rmsd_len_300", avg_rmsd_len_300, on_epoch=True, sync_dist=True)
         self.log("test_tmscore_len_300", avg_tmscore_len_300, on_epoch=True, sync_dist=True)
         self.log("test_nssr_score_len_300", avg_nssr_score_len_300, on_epoch=True, sync_dist=True)
-        self.log("test_hydrophobicity_rmsd_len_300", avg_hydrophobicity_rmsd_len_300, on_epoch=True, sync_dist=True)  # New
-        self.log("test_charge_rmsd_len_300", avg_charge_rmsd_len_300, on_epoch=True, sync_dist=True)  # New
 
         # Calculate average metrics for each CATH class
         # Compute averages for CATH class Alpha
@@ -1110,8 +982,6 @@ class MInterface(MInterface_base):
         avg_rmsd_alpha = compute_avg(self.rmsd_alpha)
         avg_tmscore_alpha = compute_avg(self.tmscore_alpha)
         avg_nssr_alpha = compute_avg(self.nssr_alpha)
-        avg_hydrophobicity_rmsd_alpha = compute_avg(self.hydrophobicity_rmsd_alpha)  # New
-        avg_charge_rmsd_alpha = compute_avg(self.charge_rmsd_alpha)  # New
 
         # Compute averages for CATH class Beta
         avg_recovery_beta = compute_avg(self.recovery_beta)
@@ -1120,8 +990,6 @@ class MInterface(MInterface_base):
         avg_rmsd_beta = compute_avg(self.rmsd_beta)
         avg_tmscore_beta = compute_avg(self.tmscore_beta)
         avg_nssr_beta = compute_avg(self.nssr_beta)
-        avg_hydrophobicity_rmsd_beta = compute_avg(self.hydrophobicity_rmsd_beta)  # New
-        avg_charge_rmsd_beta = compute_avg(self.charge_rmsd_beta)  # New
 
         # Compute averages for CATH class AlphaBeta
         avg_recovery_alpha_beta = compute_avg(self.recovery_alpha_beta)
@@ -1130,8 +998,6 @@ class MInterface(MInterface_base):
         avg_rmsd_alpha_beta = compute_avg(self.rmsd_alpha_beta)
         avg_tmscore_alpha_beta = compute_avg(self.tmscore_alpha_beta)
         avg_nssr_alpha_beta = compute_avg(self.nssr_alpha_beta)
-        avg_hydrophobicity_rmsd_alpha_beta = compute_avg(self.hydrophobicity_rmsd_alpha_beta)  # New
-        avg_charge_rmsd_alpha_beta = compute_avg(self.charge_rmsd_alpha_beta)  # New
 
         # Compute averages for CATH class FewSecondaryStructures
         avg_recovery_few_secondary_structures = compute_avg(self.recovery_few_secondary_structures)
@@ -1140,8 +1006,6 @@ class MInterface(MInterface_base):
         avg_rmsd_few_secondary_structures = compute_avg(self.rmsd_few_secondary_structures)
         avg_tmscore_few_secondary_structures = compute_avg(self.tmscore_few_secondary_structures)
         avg_nssr_few_secondary_structures = compute_avg(self.nssr_few_secondary_structures)
-        avg_hydrophobicity_rmsd_few_secondary_structures = compute_avg(self.hydrophobicity_rmsd_few_secondary_structures)  # New
-        avg_charge_rmsd_few_secondary_structures = compute_avg(self.charge_rmsd_few_secondary_structures)  # New
 
         # Compute averages for CATH class Other
         avg_recovery_other = compute_avg(self.recovery_other)
@@ -1150,8 +1014,6 @@ class MInterface(MInterface_base):
         avg_rmsd_other = compute_avg(self.rmsd_other)
         avg_tmscore_other = compute_avg(self.tmscore_other)
         avg_nssr_other = compute_avg(self.nssr_other)
-        avg_hydrophobicity_rmsd_other = compute_avg(self.hydrophobicity_rmsd_other)  # New
-        avg_charge_rmsd_other = compute_avg(self.charge_rmsd_other)  # New
 
         # Log metrics for CATH class Alpha
         self.log("test_recovery_alpha", avg_recovery_alpha, on_epoch=True, sync_dist=True)
@@ -1160,8 +1022,6 @@ class MInterface(MInterface_base):
         self.log("test_rmsd_alpha", avg_rmsd_alpha, on_epoch=True, sync_dist=True)
         self.log("test_tmscore_alpha", avg_tmscore_alpha, on_epoch=True, sync_dist=True)
         self.log("test_nssr_alpha", avg_nssr_alpha, on_epoch=True, sync_dist=True)
-        self.log("test_hydrophobicity_rmsd_alpha", avg_hydrophobicity_rmsd_alpha, on_epoch=True, sync_dist=True)  # New
-        self.log("test_charge_rmsd_alpha", avg_charge_rmsd_alpha, on_epoch=True, sync_dist=True)  # New
 
         # Log metrics for CATH class Beta
         self.log("test_recovery_beta", avg_recovery_beta, on_epoch=True, sync_dist=True)
@@ -1170,8 +1030,6 @@ class MInterface(MInterface_base):
         self.log("test_rmsd_beta", avg_rmsd_beta, on_epoch=True, sync_dist=True)
         self.log("test_tmscore_beta", avg_tmscore_beta, on_epoch=True, sync_dist=True)
         self.log("test_nssr_beta", avg_nssr_beta, on_epoch=True, sync_dist=True)
-        self.log("test_hydrophobicity_rmsd_beta", avg_hydrophobicity_rmsd_beta, on_epoch=True, sync_dist=True)  # New
-        self.log("test_charge_rmsd_beta", avg_charge_rmsd_beta, on_epoch=True, sync_dist=True)  # New
 
         # Log metrics for CATH class AlphaBeta
         self.log("test_recovery_alpha_beta", avg_recovery_alpha_beta, on_epoch=True, sync_dist=True)
@@ -1180,8 +1038,6 @@ class MInterface(MInterface_base):
         self.log("test_rmsd_alpha_beta", avg_rmsd_alpha_beta, on_epoch=True, sync_dist=True)
         self.log("test_tmscore_alpha_beta", avg_tmscore_alpha_beta, on_epoch=True, sync_dist=True)
         self.log("test_nssr_alpha_beta", avg_nssr_alpha_beta, on_epoch=True, sync_dist=True)
-        self.log("test_hydrophobicity_rmsd_alpha_beta", avg_hydrophobicity_rmsd_alpha_beta, on_epoch=True, sync_dist=True)  # New
-        self.log("test_charge_rmsd_alpha_beta", avg_charge_rmsd_alpha_beta, on_epoch=True, sync_dist=True)  # New
 
         # Log metrics for CATH class FewSecondaryStructures
         self.log("test_recovery_few_secondary_structures", avg_recovery_few_secondary_structures, on_epoch=True, sync_dist=True)
@@ -1190,8 +1046,6 @@ class MInterface(MInterface_base):
         self.log("test_rmsd_few_secondary_structures", avg_rmsd_few_secondary_structures, on_epoch=True, sync_dist=True)
         self.log("test_tmscore_few_secondary_structures", avg_tmscore_few_secondary_structures, on_epoch=True, sync_dist=True)
         self.log("test_nssr_few_secondary_structures", avg_nssr_few_secondary_structures, on_epoch=True, sync_dist=True)
-        self.log("test_hydrophobicity_rmsd_few_secondary_structures", avg_hydrophobicity_rmsd_few_secondary_structures, on_epoch=True, sync_dist=True)  # New
-        self.log("test_charge_rmsd_few_secondary_structures", avg_charge_rmsd_few_secondary_structures, on_epoch=True, sync_dist=True)  # New
 
         # Log metrics for CATH class Other
         self.log("test_recovery_other", avg_recovery_other, on_epoch=True, sync_dist=True)
@@ -1200,8 +1054,6 @@ class MInterface(MInterface_base):
         self.log("test_rmsd_other", avg_rmsd_other, on_epoch=True, sync_dist=True)
         self.log("test_tmscore_other", avg_tmscore_other, on_epoch=True, sync_dist=True)
         self.log("test_nssr_other", avg_nssr_other, on_epoch=True, sync_dist=True)
-        self.log("test_hydrophobicity_rmsd_other", avg_hydrophobicity_rmsd_other, on_epoch=True, sync_dist=True)  # New
-        self.log("test_charge_rmsd_other", avg_charge_rmsd_other, on_epoch=True, sync_dist=True)  # New
 
         # Compute residue-level metrics (for all residues)
         all_residue_accuracy = self.all_residue_accuracy.compute().to(model_device)
@@ -1239,7 +1091,7 @@ class MInterface(MInterface_base):
             'Surface Recovery': torch.stack(self.surface_recoveries_nan_included).cpu().numpy(),
             'Core Recovery': torch.stack(self.core_recoveries_nan_included).cpu().numpy(),
         }
-        if self.hparams.dataset == 'CATH4.2SurfProPiFoldDense':
+        if self.hparams.dataset == 'CATH4.2':
             # Add partition data
             partitions_data = {
                 'CATH_Class': self.cath_classes,
@@ -1310,8 +1162,6 @@ class MInterface(MInterface_base):
         self.rmsd_len_100.clear()
         self.tmscore_len_100.clear()
         self.nssr_len_100.clear()
-        self.hydrophobicity_rmsd_len_100.clear()  # New
-        self.charge_rmsd_len_100.clear()          # New
 
         # Clear metrics for sequences with length 100–300
         self.recovery_len_100_300.clear()
@@ -1320,8 +1170,6 @@ class MInterface(MInterface_base):
         self.rmsd_len_100_300.clear()
         self.tmscore_len_100_300.clear()
         self.nssr_len_100_300.clear()
-        self.hydrophobicity_rmsd_len_100_300.clear()  # New
-        self.charge_rmsd_len_100_300.clear()          # New
 
         # Clear metrics for sequences with length > 300
         self.recovery_len_300.clear()
@@ -1330,8 +1178,6 @@ class MInterface(MInterface_base):
         self.rmsd_len_300.clear()
         self.tmscore_len_300.clear()
         self.nssr_len_300.clear()
-        self.hydrophobicity_rmsd_len_300.clear()  # New
-        self.charge_rmsd_len_300.clear()          # New
 
         # Reset CATH class metrics
         self.recovery_alpha.clear()
@@ -1417,10 +1263,8 @@ class MInterface(MInterface_base):
             self.test_setupped = True 
         # Set model to evaluation mode and disable gradients
         self.model.eval()
-        # losses, recoveries, plddt_cas, plddts, rmsds, tmscores, nssr_scores, hydrophobicity_rmsds, charge_rmsds = self.test_forward(batch)
         with torch.no_grad():
-            # losses, recoveries, plddt_cas, plddts, rmsds, tmscores, nssr_scores, hydrophobicity_rmsds, charge_rmsds, surface_recoveries, core_recoveries = self.test_forward(batch)
-            losses, recoveries, plddt_cas, plddts, rmsds, tmscores, nssr_scores, hydrophobicity_rmsds, charge_rmsds = self.test_forward(batch)
+            losses, recoveries, plddt_cas, plddts, rmsds, tmscores, nssr_scores = self.test_forward(batch)
 
             for i, loss in enumerate(losses):
                 recovery = recoveries[i]
@@ -1429,8 +1273,6 @@ class MInterface(MInterface_base):
                 rmsd = rmsds[i]
                 tmscore = tmscores[i]
                 nssr_score = nssr_scores[i]
-                hydrophobicity_rmsd = hydrophobicity_rmsds[i]
-                charge_rmsd = charge_rmsds[i]
                 # surface_recovery = surface_recoveries[i]
                 # core_recovery = core_recoveries[i]
                 self.test_step_outputs.append({
@@ -1441,10 +1283,6 @@ class MInterface(MInterface_base):
                         'test_rmsd': rmsd,
                         'test_tmscore': tmscore,
                         'test_nssr_score': nssr_score,
-                        'test_hydrophobicity_rmsd': hydrophobicity_rmsd,
-                        'test_charge_rmsd': charge_rmsd,
-                        # 'test_surface_recovery': surface_recovery,
-                        # 'test_core_recovery': core_recovery,
                     }
                 )
 

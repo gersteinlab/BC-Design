@@ -32,14 +32,6 @@ class MyDataLoader(DataLoader):
                         if type(val) == torch.Tensor:
                             batch[key] = batch[key].cuda(non_blocking=True, device=self.pretrain_device)
 
-                    # X = batch['X'].cuda(non_blocking=True, device=self.pretrain_device)
-                    # S = batch['S'].cuda(non_blocking=True, device=self.pretrain_device)
-                    # score = batch['score'].cuda(non_blocking=True, device=self.pretrain_device)
-                    # mask = batch['mask'].cuda(non_blocking=True, device=self.pretrain_device)
-                    # lengths = batch['lengths'].cuda(non_blocking=True, device=self.pretrain_device)
-                    # chain_mask = batch['chain_mask'].cuda(non_blocking=True, device=self.pretrain_device)
-                    # chain_encoding = batch['chain_encoding'].cuda(non_blocking=True, device=self.pretrain_device)
-                
                     yield batch
 
 
@@ -50,34 +42,8 @@ class DInterface(DInterface_base):
         self.load_data_module()
 
     def setup(self, stage=None):
-        from src.datasets.featurizer import (featurize_AF, featurize_GTrans, featurize_GVP,
-                         featurize_ProteinMPNN, featurize_Inversefolding, featurize_SurfProPiFold, featurize_TestModel0904,
-                         featurize_TestModel0907, featurize_SBModel, featurize_SBModel1, featurize_SBC2Model, featurize_UBC2Model)
-        if self.hparams.model_name in ['AlphaDesign', 'PiFold', 'KWDesign', 'GraphTrans', 'StructGNN', 'GCA', 'E3PiFold']:
-            self.collate_fn = featurize_GTrans
-        elif self.hparams.model_name == 'GVP':
-            featurizer = featurize_GVP()
-            self.collate_fn = featurizer.collate
-        elif self.hparams.model_name == 'ProteinMPNN':
-            self.collate_fn = featurize_ProteinMPNN
-        elif self.hparams.model_name == 'ESMIF':
-            self.collate_fn = featurize_Inversefolding
-        elif self.hparams.model_name == 'SurfProPiFold' or self.hparams.model_name == 'SurfProPiFoldSurfaceOnly' or self.hparams.model_name == 'SurfProPiFoldDense' or self.hparams.model_name == 'TestModel0831':
-            self.collate_fn = featurize_SurfProPiFold
-        elif self.hparams.model_name == 'TestModel0904':
-            self.collate_fn = featurize_TestModel0904   
-        elif self.hparams.model_name == 'TestModel0907':
-            self.collate_fn = featurize_TestModel0907  
-        elif self.hparams.model_name == 'SBModel':
-            self.collate_fn = featurize_SBModel       
-            # self.collate_fn = featurize_SBModel1
-        elif self.hparams.model_name == 'SBCModel':
-            self.collate_fn = featurize_SBModel
-        elif self.hparams.model_name == 'SBC2Model' or self.hparams.model_name == 'SBC2Mask' or self.hparams.model_name == 'SBC2Revision':
-            self.collate_fn = featurize_SBC2Model
-        elif self.hparams.model_name == 'Exp':
-            self.collate_fn = featurize_SBC2Model
-        elif self.hparams.model_name == 'UBC2Model':
+        from src.datasets.featurizer import (featurize_UBC2Model)
+        if self.hparams.model_name == 'UBC2Model':
             self.collate_fn = featurize_UBC2Model().featurize
     
         # Assign train/val datasets for use in dataloaders
