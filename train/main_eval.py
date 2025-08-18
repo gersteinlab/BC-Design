@@ -18,7 +18,7 @@ from pytorch_lightning.trainer import Trainer
 torch.autograd.set_detect_anomaly(True)
 
 def create_parser():
-    checkpoint_path = './train/results/ncs-revision-ubc2-fullfinaltrain-strucmask0.1-bcmaskmax1.0-bs2-lr0.00002-epoch50-encoder12-bc2/checkpoints/last.ckpt'
+    checkpoint_path = './UBC2Model.ckpt'
     ex_name = 'UBC2Model'
     batch_size = 2
 
