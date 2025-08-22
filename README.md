@@ -123,33 +123,15 @@ After completing these steps, your environment should be ready, and you'll have 
 
 ## Getting Started
 
-<!-- **Obtaining Dataset**
-
-The processed datasets could be found in the [releases](https://github.com/A4Bio/ProteinInvBench/releases/tag/dataset_release).  -->
-
-**Model Training**
-
-```shell
-python train/main_fused.py
-```
-
 **Model Inference**
 
 To run inference on the test set of CATH4.2:
 ```shell
 python train/main_eval.py --dataset CATH4.2
 # Expected output:
-# ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-#        Test metric             DataLoader 0
-# ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-#         test_loss           0.3077324628829956
-#      test_nssr_score        0.9355388283729553
-#      test_perplexity         1.468966877420434
-#        test_plddt           0.7799139618873596
-#       test_plddt_ca         0.8211792707443237
-#       test_recovery         0.8836535215377808
-#       test_tmscore          0.8390856981277466
-# ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+# test_recovery                                 0.9025624394416809
+# test_tmscore                                  0.8511192798614502
+# and other metrics
 ```
 To run inference on the test set of TS50, TS500, or AFDB2000:
 ```shell
