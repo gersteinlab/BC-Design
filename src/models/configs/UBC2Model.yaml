@@ -39,6 +39,7 @@ contrastive_loss_global_alpha: 1.
 contrastive_loss_local_alpha: 1.
 
 if_struc_only: false
+if_strucenc_only: false
 
 if_warmup_train: false
 

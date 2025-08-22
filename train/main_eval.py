@@ -54,6 +54,8 @@ def create_parser():
 
     parser.add_argument('--contrastive_pretrain', default=False, type=bool)
 
+    parser.add_argument('--if_struc_only', default=False, type=bool)
+
     args = parser.parse_args()
     return args
 

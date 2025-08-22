@@ -9,7 +9,6 @@ import os
 from torcheval.metrics.text import Perplexity
 from torcheval.metrics import MulticlassAccuracy, MulticlassPrecision, MulticlassRecall, MulticlassF1Score, BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score
 from src.interface.model_interface import MInterface_base
-from src.models.MemoryPiFold import MemoPiFold_model
 import math
 import torch.nn.functional as F
 from torch.cuda.amp import autocast
@@ -1332,101 +1331,6 @@ class MInterface(MInterface_base):
         params = OmegaConf.load(f'./src/models/configs/{self.hparams.model_name}.yaml')
         params.update(self.hparams)
 
-        if self.hparams.model_name == 'GraphTrans':
-            from src.models.graphtrans_model import GraphTrans_Model
-            self.model = GraphTrans_Model(params)
-        
-        if self.hparams.model_name == 'StructGNN':
-            from src.models.structgnn_model import StructGNN_Model
-            self.model = StructGNN_Model(params)
-            
-        if self.hparams.model_name == 'GVP':
-            from src.models.gvp_model import GVP_Model
-            self.model = GVP_Model(params)
-
-        if self.hparams.model_name == 'GCA':
-            from src.models.gca_model import GCA_Model
-            self.model = GCA_Model(params)
-
-        if self.hparams.model_name == 'AlphaDesign':
-            from src.models.alphadesign_model import AlphaDesign_Model
-            self.model = AlphaDesign_Model(params)
-
-        if self.hparams.model_name == 'ProteinMPNN':
-            from src.models.proteinmpnn_model import ProteinMPNN_Model
-            self.model = ProteinMPNN_Model(params)
-
-        if self.hparams.model_name == 'ESMIF':
-            pass
-
-        if self.hparams.model_name == 'PiFold':
-            from src.models.pifold_model import PiFold_Model
-            self.model = PiFold_Model(params)
-
-        if self.hparams.model_name == 'KWDesign':
-            from src.models.kwdesign_model import Design_Model
-            params['design_model'] = MemoPiFold_model(params)
-            # self.model = Design_Model(params)
-            self.model = Design_Model(
-                params,
-                temporature=params['temporature'],
-                msa_n=params['msa_n'],
-                tunning_layers_n=params['tunning_layers_n'],
-                tunning_layers_dim=params['tunning_layers_dim'],
-                input_design_dim=params['input_design_dim'],
-                input_esm_dim=params['input_esm_dim'],
-                tunning_dropout=params['tunning_dropout'],
-                design_model=params['design_model'],
-                LM_model=params['LM_model'],
-                ESMIF_model=params['ESMIF_model'],
-            )
-        
-        if self.hparams.model_name == 'E3PiFold':
-            from src.models.E3PiFold_model import E3PiFold
-            self.model = E3PiFold(params)
-
-        if self.hparams.model_name == 'SurfProPiFold':
-            from src.models.surfpropifold_model import SurfProPiFold_Model
-            self.model = SurfProPiFold_Model(params)
-
-        if self.hparams.model_name == 'SurfProPiFoldSurfaceOnly':
-            from src.models.surfpropifold_model import SurfProPiFoldSurfaceOnly_Model
-            self.model = SurfProPiFoldSurfaceOnly_Model(params)
-
-        if self.hparams.model_name == 'SurfProPiFoldDense':
-            from src.models.surfpropifold_model import SurfProPiFoldDense_Model
-            self.model = SurfProPiFoldDense_Model(params)
-
-        if self.hparams.model_name == 'TestModel0831':
-            from src.models.test_models import TestModel0831
-            self.model = TestModel0831(params)
-
-        if self.hparams.model_name == 'TestModel0904':
-            from src.models.test_models import TestModel0904
-            self.model = TestModel0904(params)
-
-        if self.hparams.model_name == 'TestModel0907':
-            from src.models.test_models import TestModel0907
-            self.model = TestModel0907(params)
-
-        if self.hparams.model_name == 'SBModel':
-            from src.models.SB_model import SBModel
-            self.model = SBModel(params)
-        if self.hparams.model_name == 'SBCModel':
-            from src.models.SBC_model import SBCModel
-            self.model = SBCModel(params)
-        if self.hparams.model_name == 'SBC2Model':
-            from src.models.SBC2_model import SBC2Model
-            self.model = SBC2Model(params)
-        if self.hparams.model_name == 'SBC2Mask':
-            from src.models.SBC2_model import SBC2Mask
-            self.model = SBC2Mask(params)
-        if self.hparams.model_name == 'SBC2Revision':
-            from src.models.SBC2_model import SBC2Revision
-            self.model = SBC2Revision(params)
-        if self.hparams.model_name == 'Exp':
-            from src.models.SBC2_model import Exp
-            self.model = Exp(params)
         if self.hparams.model_name == 'UBC2Model':
             from src.models.UBC2_model import UBC2Model
             self.model = UBC2Model(params)

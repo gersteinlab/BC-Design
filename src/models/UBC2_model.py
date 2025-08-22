@@ -48,6 +48,8 @@ class PointCloudMessagePassing(nn.Module):
 
         self.bc_mask_max_rate = args.bc_mask_max_rate
         self.bc_mask_how = args.bc_mask_how
+        self.if_struc_only = args.if_struc_only
+        print('if_struc_only', self.if_struc_only)
 
         # CLS token for biochemical features initialized with per_layer_dim
         self.biochem_cls_token = nn.Parameter(torch.randn(1 + 8, self.per_layer_dim))  # Adjusted dimension
@@ -92,6 +94,12 @@ class PointCloudMessagePassing(nn.Module):
         ###### for inference with only backbone structure, bc input will be all nan
         biochem_feats[nan_rows] = self.bc_mask_token
 
+        if self.if_struc_only:
+            if self.bc_mask_how == 'token':
+                biochem_feats[:] = self.bc_mask_token
+            elif self.bc_mask_how == 'gauss':
+                biochem_feats[:] = torch.randn_like(biochem_feats)
+
         if self.training:
             # randomly select a probability between 0 and self.bc_mask_max_rate
             bc_mask_rate = torch.rand(B, device=biochem_feats.device) * self.bc_mask_max_rate
@@ -101,7 +109,7 @@ class PointCloudMessagePassing(nn.Module):
             if self.bc_mask_how == 'token':
                 biochem_feats[bc_mask_indices] = self.bc_mask_token
             elif self.bc_mask_how == 'gauss':
-                biochem_feats[bc_mask_indices] = torch.randn_like(biochem_feats[bc_mask_indices])
+                biochem_feats[bc_mask_indices] = torch.randn_like(biochem_feats[bc_mask_indices])                
 
         # Add CLS token at the end of biochem_feats (Bx(N+1)x(per_layer_dim))
         cls_tokens = self.biochem_cls_token.expand(B, -1, -1)  # Expand CLS token for the batch
@@ -728,6 +736,9 @@ class UBC2Model(nn.Module):
         self.contrastive_loss_global_alpha = args.contrastive_loss_global_alpha
         self.contrastive_loss_local_alpha = args.contrastive_loss_local_alpha
 
+        self.if_struc_only = args.if_struc_only
+        self.if_strucenc_only = args.if_strucenc_only
+
         self.if_warmup_train = args.if_warmup_train
 
         # self.tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers")
@@ -792,6 +803,17 @@ class UBC2Model(nn.Module):
                 for param in module.parameters():
                     param.requires_grad = False
                 module.eval()            
+        elif self.if_strucenc_only:
+            modules_to_freeze = {
+                "surface_encoder": self.surface_encoder,
+                "transformer_decoder": self.transformer_decoder,
+            }
+
+            for name, module in modules_to_freeze.items():
+                print(f"--- Freezing module: '{name}'")
+                for param in module.parameters():
+                    param.requires_grad = False
+                module.eval()        
         elif self.if_warmup_train:
             modules_to_freeze = {
                 "encoder": self.encoder,
@@ -834,18 +856,31 @@ class UBC2Model(nn.Module):
                 # biochem_feats = torch.ones_like(biochem_feats) * 100
                 biochem_feats = torch.randn_like(biochem_feats)
 
-        ################## real start
-        h_surface = self.surface_encoder(surfaces, biochem_feats, correspondences)
+        if self.if_strucenc_only:
+            decoder_output = h_V_unflattened
+            # Flatten decoder_output and remove padding
+            mask = mask_unflattened.bool()
+            decoder_output = decoder_output[mask]
 
-        # Manually extract the CLS tokens (global + subarea) from the biochemical encoder
-        biochem_cls_tokens = h_surface[:, -9:, :]  # Last 9 tokens: global (0th) + subarea (1st to 8th)
-        h_surface = h_surface[:, :-9, :]  # The rest of the biochemical node embeddings
+            # Predict labels using MLP
+            logits = self.mlp(decoder_output)
+            log_probs = F.log_softmax(logits, dim=-1)
 
+        elif self.contrastive_pretrain or self.contrastive_pretrain_both:
+            h_surface = self.surface_encoder(surfaces, biochem_feats, correspondences)
 
-        ### new decoder
-        if self.contrastive_pretrain or self.contrastive_pretrain_both:
+            # Manually extract the CLS tokens (global + subarea) from the biochemical encoder
+            biochem_cls_tokens = h_surface[:, -9:, :]  # Last 9 tokens: global (0th) + subarea (1st to 8th)
+            h_surface = h_surface[:, :-9, :]  # The rest of the biochemical node embeddings
+
             log_probs = 0
         else:
+            h_surface = self.surface_encoder(surfaces, biochem_feats, correspondences)
+
+            # Manually extract the CLS tokens (global + subarea) from the biochemical encoder
+            biochem_cls_tokens = h_surface[:, -9:, :]  # Last 9 tokens: global (0th) + subarea (1st to 8th)
+            h_surface = h_surface[:, :-9, :]  # The rest of the biochemical node embeddings
+
             ss_connection_mask = batch['ss_connection']
             ss_connection_mask = ~ss_connection_mask.bool().repeat(8, 1, 1)
 
@@ -859,11 +894,6 @@ class UBC2Model(nn.Module):
                 # ablation
                 memory_mask=ss_connection_mask
             )
-            ################## real end
-
-            ################## exp
-            # decoder_output = h_V_unflattened
-            ################## exp
 
             # Flatten decoder_output and remove padding
             mask = mask_unflattened.bool()
@@ -873,7 +903,6 @@ class UBC2Model(nn.Module):
             logits = self.mlp(decoder_output)
             log_probs = F.log_softmax(logits, dim=-1)
 
-        ################## real start
         # Contrastive learning
         if (self.training and random_number < self.modal_mask_ratio) or not self.contrastive_learning:
             contrastive_loss = 0
@@ -882,12 +911,8 @@ class UBC2Model(nn.Module):
             contrastive_loss_subarea = self._contrastive_loss_subarea(struct_cls_tokens[:, 1:, :], biochem_cls_tokens[:, 1:, :])  # Subarea CLS
             contrastive_loss = self.contrastive_loss_global_alpha * contrastive_loss_global + self.contrastive_loss_local_alpha * contrastive_loss_subarea
 
-        # Update queues with current batch global CLS tokens
-        self._dequeue_and_enqueue(struct_cls_tokens[:, 0, :], biochem_cls_tokens[:, 0, :])
-        ################## real end
-        ################## exp
-        # contrastive_loss = 0
-        ################## exp
+            # Update queues with current batch global CLS tokens
+            self._dequeue_and_enqueue(struct_cls_tokens[:, 0, :], biochem_cls_tokens[:, 0, :])
 
         return {'log_probs': log_probs, 'contrastive_loss': contrastive_loss}
 
