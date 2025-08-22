@@ -11,6 +11,7 @@ from Bio.SeqUtils import seq1
 from Bio.PDB.Polypeptide import is_aa
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 import warnings
+import argparse # Import the argparse library
 
 # Suppress PDBConstructionWarning
 warnings.simplefilter('ignore', PDBConstructionWarning)
@@ -386,4 +387,17 @@ def main(dataset='afdb2000'):
 
 
 
-combined_data = main('afdb-large4000')
+# This block now handles command-line argument parsing
+if __name__ == "__main__":
+    # Create the parser
+    parser = argparse.ArgumentParser(description="Process protein data from a JSON file to a PKL file.")
+    
+    # Add the '-dataset' argument
+    parser.add_argument('-dataset', type=str, required=True, 
+                        help='The name of the dataset to process. The script expects to find data/{dataset}/{dataset}.json')
+    
+    # Parse the arguments
+    args = parser.parse_args()
+    
+    # Call the main function with the provided dataset name
+    main(args.dataset)

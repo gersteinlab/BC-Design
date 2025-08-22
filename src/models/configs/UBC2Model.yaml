@@ -1,6 +1,6 @@
 res_dir: ./train/results
-ex_name: ncs-revision-ubc2-cathafdb-fashion4ifstruconly-strucmask0.1-bs1-g1l1-lr0.0002-epoch50-encoder12-bc2
-dataset: CATHAFDB
+ex_name: UBC2Model
+dataset: CATH4.2
 model_name: UBC2Model
 lr: 0.0002
 lr_scheduler: onecycle
@@ -38,8 +38,8 @@ contrastive_pretrain_both: false
 contrastive_loss_global_alpha: 1.
 contrastive_loss_local_alpha: 1.
 
-if_struc_only: true
+if_struc_only: false
 
 if_warmup_train: false
 
-checkpoint_path: "./train/results/ncs-revision-ubc2-cathafdb-contrastpreboth-bs1-g1l1-lr0.0002-epoch50-encoder12-bc2/checkpoints/best-epoch=14-recovery=0.000.ckpt"
+checkpoint_path: "./UBC2Model.ckpt"
