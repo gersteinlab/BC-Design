@@ -139,6 +139,10 @@ python train/main_eval.py --dataset TS50
 python train/main_eval.py --dataset TS500
 python train/main_eval.py --dataset AFDB2000
 ```
+To run inference with backbone structure only:
+```shell
+python python train/main_eval.py --if_struc_only True
+```
 
 The `train/main_eval.py` script is used to evaluate the pre-trained BC-Design model on test datasets. It loads the specified dataset and the pre-trained model checkpoint (`UBC2Model.ckpt` by default) to perform inference and report evaluation metrics.
 

@@ -20,7 +20,7 @@ torch.autograd.set_detect_anomaly(True)
 def create_parser():
     checkpoint_path = './UBC2Model.ckpt'
     ex_name = 'UBC2Model'
-    batch_size = 2
+    batch_size = 1
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--res_dir', default='./train/results', type=str)
