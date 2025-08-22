@@ -2,7 +2,7 @@ import datetime
 import os
 import sys
 sys.path.append(os.getcwd())
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 # os.environ['NCCL_P2P_DISABLE'] = '1'
 
 import warnings
