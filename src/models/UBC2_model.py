@@ -873,6 +873,7 @@ class UBC2Model(nn.Module):
             biochem_cls_tokens = h_surface[:, -9:, :]  # Last 9 tokens: global (0th) + subarea (1st to 8th)
             h_surface = h_surface[:, :-9, :]  # The rest of the biochemical node embeddings
 
+            logits = 0
             log_probs = 0
         else:
             h_surface = self.surface_encoder(surfaces, biochem_feats, correspondences)
@@ -914,7 +915,7 @@ class UBC2Model(nn.Module):
             # Update queues with current batch global CLS tokens
             self._dequeue_and_enqueue(struct_cls_tokens[:, 0, :], biochem_cls_tokens[:, 0, :])
 
-        return {'log_probs': log_probs, 'contrastive_loss': contrastive_loss}
+        return {'log_probs': log_probs, 'contrastive_loss': contrastive_loss, 'logits': logits}
 
     @torch.no_grad()
     def _dequeue_and_enqueue(self, struct_cls_token, biochem_cls_token):

@@ -549,7 +549,7 @@ class MInterface(MInterface_base):
         results = self.model(batch)
         end_time = time.time()
         self.inference_times.append(end_time - start_time)
-        log_probs, mask = results['log_probs'], batch['mask']
+        log_probs, mask, logits = results['log_probs'], batch['mask'], batch['logits']
         batch_ids = batch['batch_id']
 
         # X = batch['X']
@@ -573,6 +573,9 @@ class MInterface(MInterface_base):
         # Define directory to save the PDBs
         pdb_save_directory = f"predicted_pdb/{self.hparams.ex_name}/{self.hparams.dataset}"
         gt_pdb_save_directory = f"gt_pdb/{self.hparams.dataset}"
+        # Create the directory to save the logits
+        logits_save_directory = f"logits/{self.hparams.ex_name}/{self.hparams.dataset}"
+        os.makedirs(logits_save_directory, exist_ok=True)
 
         # Ensure the ground truth PDB directory exists
         if not os.path.exists(gt_pdb_save_directory):
@@ -589,11 +592,13 @@ class MInterface(MInterface_base):
 
             # Apply the mask to get log_probs and ground truth S for this sample
             log_probs_sample = log_probs[sample_mask]
+            logits_sample = logits[sample_mask]
             mask_sample = mask[sample_mask]
             S_sample = batch['S'][sample_mask]
 
             # Further mask log_probs and S using the internal mask
             log_probs_masked = log_probs_sample[mask_sample]
+            logits_masked = logits_sample[mask_sample]
             S_masked = S_sample[mask_sample]
 
             S_masked_list = S_masked.tolist()
@@ -642,6 +647,9 @@ class MInterface(MInterface_base):
             existing_pdb = load_existing_pdbs([sample_title], pdb_save_directory)[0]
             pred_pdb_path = os.path.join(pdb_save_directory, f"{sample_title}.pdb")
             gt_pdb_path = os.path.join(gt_pdb_save_directory, f"{sample_title}.pdb")
+            # Save the masked logits tensor for the current sample
+            logits_save_path = os.path.join(logits_save_directory, f"{sample_title}.pt")
+            torch.save(logits_masked, logits_save_path)
 
             self.titles.append(sample_title)
 
