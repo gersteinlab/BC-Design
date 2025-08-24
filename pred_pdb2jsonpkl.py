@@ -82,6 +82,57 @@ def parse_pdb(file_path):
     return {'name': name, 'seq': seq, 'coords': coords}
 
 
+def parse_combined_pdb_data(predicted_pdb_path, ground_truth_pdb_path):
+    """
+    Parses a predicted PDB for its sequence and a ground truth PDB for its coordinates.
+
+    Args:
+        predicted_pdb_path (str): Path to the predicted PDB file (for sequence).
+        ground_truth_pdb_path (str): Path to the ground truth PDB file (for coordinates).
+
+    Returns:
+        A dictionary {'name', 'seq', 'coords'} if successful and lengths match,
+        otherwise None.
+    """
+    parser = PDB.PDBParser(QUIET=True)
+    name = os.path.basename(predicted_pdb_path).replace('.pdb', '')
+
+    # --- 1. Extract sequence from the PREDICTED PDB ---
+    try:
+        structure_pred = parser.get_structure(f"{name}_pred", predicted_pdb_path)
+        model_pred = next(structure_pred.get_models())
+        chain_pred = next(model_pred.get_chains())
+        predicted_seq = ''.join([three_to_one.get(res.get_resname(), 'X') for res in chain_pred if is_aa(res)])
+    except Exception as e:
+        print(f"Warning: Could not parse sequence from predicted PDB {predicted_pdb_path}. Error: {e}")
+        return None
+
+    # --- 2. Extract coordinates from the GROUND TRUTH PDB ---
+    try:
+        structure_gt = parser.get_structure(f"{name}_gt", ground_truth_pdb_path)
+        gt_coords = []
+        model_gt = next(structure_gt.get_models())
+        chain_gt = next(model_gt.get_chains())
+        atom_names = ['N', 'CA', 'C', 'O']
+
+        for res in chain_gt:
+            if is_aa(res):
+                coord_dict = {atom.get_name(): atom.get_coord().tolist() for atom in res if atom.get_name() in atom_names}
+                if all(atom in coord_dict for atom in atom_names):
+                    temp_coords = [coord_dict[atom] for atom in atom_names]
+                    gt_coords.append(temp_coords)
+    except Exception as e:
+        print(f"Warning: Could not parse coordinates from ground truth PDB {ground_truth_pdb_path}. Error: {e}")
+        return None
+
+    # --- 3. CRITICAL: Check for length consistency ---
+    if len(predicted_seq) != len(gt_coords):
+        print(f"ERROR: Length mismatch for {name}. Predicted seq len: {len(predicted_seq)}, GT coords len: {len(gt_coords)}. Skipping.")
+        return None
+
+    return {'name': name, 'seq': predicted_seq, 'coords': gt_coords}
+
+
 # Step 1: Create PDB structure from protein dict
 def create_pdb_structure(protein_data):
     structure_id = protein_data['name']
@@ -515,42 +566,54 @@ def update_sequences_with_ground_truth(json_file_path, pkl_file_path, gt_pdb_dir
         print(f"An error occurred while processing the PKL file: {e}")
 
 
-# This block now handles command-line argument parsing
+
 if __name__ == "__main__":
-    folder_path = './predicted_pdb/UBC2Model-bcmask1.01/CATH4.2'
-    pdb_files = [f for f in os.listdir(folder_path) if f.endswith('.pdb')]
+    # Define paths for predicted and ground truth PDBs
+    predicted_pdb_folder = './predicted_pdb/UBC2Model-bcmask1.01/CATH4.2'
+    gt_pdb_folder = './gt_pdb/CATH4.2'
+    
+    pdb_files = [f for f in os.listdir(predicted_pdb_folder) if f.endswith('.pdb')]
     data = []
 
-    for pdb_file in tqdm(pdb_files):
-        file_path = os.path.join(folder_path, pdb_file)
-        data.append(parse_pdb(file_path))
+    print("--- Creating initial dataset from predicted sequences and ground truth coordinates ---")
+    for pdb_file in tqdm(pdb_files, desc="Parsing PDBs"):
+        predicted_path = os.path.join(predicted_pdb_folder, pdb_file)
+        gt_path = os.path.join(gt_pdb_folder, pdb_file) # Assumes file names match
 
-    # Remove the './' prefix if it exists
-    if folder_path.startswith('./'):
-        # Slice the string to start after './'
-        path_without_prefix = folder_path[2:]
+        if not os.path.exists(gt_path):
+            print(f"Warning: Corresponding ground truth PDB not found for {pdb_file}. Skipping.")
+            continue
+
+        # Call the new function that combines data from two PDBs
+        combined_data = parse_combined_pdb_data(predicted_path, gt_path)
+        
+        if combined_data:
+            data.append(combined_data)
+
+    # --- The rest of the script remains the same ---
+
+    # Create dataset name from the folder path
+    if predicted_pdb_folder.startswith('./'):
+        path_without_prefix = predicted_pdb_folder[2:]
     else:
-        path_without_prefix = folder_path
-
-    # Replace all remaining slashes with hyphens
+        path_without_prefix = predicted_pdb_folder
     dataset_name = path_without_prefix.replace('/', '-')
 
+    # Create and save the initial JSON file
     output_data_dir = os.path.join('./data', dataset_name)
     os.makedirs(output_data_dir, exist_ok=True)
     json_output_path = os.path.join(output_data_dir, dataset_name + '.json')
 
     with open(json_output_path, 'w') as json_file:
         json.dump(data, json_file, indent=4)
-    print(f"\nInitial JSON with predicted sequences saved to: {json_output_path}")
+    print(f"\nInitial JSON (predicted seq, GT coords) saved to: {json_output_path}")
 
-
-    # Call the main function with the provided dataset name
+    # Call the main function to process JSON and create PKL
     main(dataset_name)
-
-    gt_pdb_folder = './gt_pdb/CATH4.2'
+    
     pkl_output_path = os.path.join(output_data_dir, dataset_name + '.pkl')
 
-    # Call the new function to perform the replacement and validation
+    # Finally, update sequences in both files to ground truth for final consistency
     update_sequences_with_ground_truth(
         json_file_path=json_output_path,
         pkl_file_path=pkl_output_path,
