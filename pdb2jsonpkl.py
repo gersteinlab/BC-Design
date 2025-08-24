@@ -81,58 +81,6 @@ def parse_pdb(file_path):
 
     return {'name': name, 'seq': seq, 'coords': coords}
 
-def parse_combined_pdb_data(predicted_pdb_path, ground_truth_pdb_path):
-    """
-    Parses a predicted PDB for its sequence and a ground truth PDB for its coordinates,
-    concatenating data from all models and chains in each respective file.
-
-    Args:
-        predicted_pdb_path (str): Path to the predicted PDB file (for sequence).
-        ground_truth_pdb_path (str): Path to the ground truth PDB file (for coordinates).
-
-    Returns:
-        A dictionary {'name', 'seq', 'coords'} if successful and lengths match,
-        otherwise None.
-    """
-    parser = PDB.PDBParser(QUIET=True)
-    name = os.path.basename(predicted_pdb_path).replace('.pdb', '')
-
-    # --- 1. Extract and concatenate sequence from ALL chains in the PREDICTED PDB ---
-    try:
-        structure_pred = parser.get_structure(f"{name}_pred", predicted_pdb_path)
-        final_predicted_seq = ""
-        for model_pred in structure_pred:
-            for chain_pred in model_pred:
-                chain_seq = ''.join([three_to_one.get(res.get_resname(), 'X') for res in chain_pred if is_aa(res)])
-                final_predicted_seq += chain_seq
-    except Exception as e:
-        print(f"Warning: Could not parse sequence from predicted PDB {predicted_pdb_path}. Error: {e}")
-        return None
-
-    # --- 2. Extract and concatenate coordinates from ALL chains in the GROUND TRUTH PDB ---
-    try:
-        structure_gt = parser.get_structure(f"{name}_gt", ground_truth_pdb_path)
-        final_gt_coords = []
-        atom_names = ['N', 'CA', 'C', 'O']
-        for model_gt in structure_gt:
-            for chain_gt in model_gt:
-                for res in chain_gt:
-                    if is_aa(res):
-                        coord_dict = {atom.get_name(): atom.get_coord().tolist() for atom in res if atom.get_name() in atom_names}
-                        if all(atom in coord_dict for atom in atom_names):
-                            temp_coords = [coord_dict[atom] for atom in atom_names]
-                            final_gt_coords.append(temp_coords)
-    except Exception as e:
-        print(f"Warning: Could not parse coordinates from ground truth PDB {ground_truth_pdb_path}. Error: {e}")
-        return None
-
-    # --- 3. CRITICAL: Check for length consistency ---
-    if len(final_predicted_seq) != len(final_gt_coords):
-        print(f"ERROR: Length mismatch for {name}. Predicted seq len: {len(final_predicted_seq)}, GT coords len: {len(final_gt_coords)}. Skipping.")
-        return None
-
-    return {'name': name, 'seq': final_predicted_seq, 'coords': final_gt_coords}
-
 
 # Step 1: Create PDB structure from protein dict
 def create_pdb_structure(protein_data):
@@ -570,23 +518,17 @@ def update_sequences_with_ground_truth(json_file_path, pkl_file_path, gt_pdb_dir
 
 if __name__ == "__main__":
     # Define paths for predicted and ground truth PDBs
-    predicted_pdb_folder = './predicted_pdb/UBC2Model-bcmask1.01/CATH4.2'
-    gt_pdb_folder = './gt_pdb/CATH4.2'
+    pdb_folder = './predicted_pdb/UBC2Model-bcmask1.01/CATH4.2'
     
-    pdb_files = [f for f in os.listdir(predicted_pdb_folder) if f.endswith('.pdb')]
+    pdb_files = [f for f in os.listdir(pdb_folder) if f.endswith('.pdb')]
     data = []
 
     print("--- Creating initial dataset from predicted sequences and ground truth coordinates ---")
     for pdb_file in tqdm(pdb_files, desc="Parsing PDBs"):
-        predicted_path = os.path.join(predicted_pdb_folder, pdb_file)
-        gt_path = os.path.join(gt_pdb_folder, pdb_file) # Assumes file names match
-
-        if not os.path.exists(gt_path):
-            print(f"Warning: Corresponding ground truth PDB not found for {pdb_file}. Skipping.")
-            continue
+        predicted_path = os.path.join(pdb_folder, pdb_file)
 
         # Call the new function that combines data from two PDBs
-        combined_data = parse_combined_pdb_data(predicted_path, gt_path)
+        combined_data = parse_pdb(predicted_path)
         
         if combined_data:
             data.append(combined_data)

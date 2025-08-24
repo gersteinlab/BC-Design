@@ -13,6 +13,11 @@ from Bio.PDB.Polypeptide import is_aa
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 import warnings
 import argparse # Import the argparse library
+import torch.nn.functional as F
+from transformers import AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers") # mask token: 32
+
 
 # Suppress PDBConstructionWarning
 warnings.simplefilter('ignore', PDBConstructionWarning)
@@ -26,23 +31,23 @@ bio_feat_dict = {
     "hydrophobicity": {
         "I": 4.5, "V": 4.2, "L": 3.8, "F": 2.8, "C": 2.5, "M": 1.9, "A": 1.8,
         "W": -0.9, "G": -0.4, "T": -0.7, "S": -0.8, "Y": -1.3, "P": -1.6, "H": -3.2,
-        "N": -3.5, "D": -3.5, "Q": -3.5, "E": -3.5, "K": -3.9, "R": -4.5
+        "N": -3.5, "D": -3.5, "Q": -3.5, "E": -3.5, "K": -3.9, "R": -4.5, "X": np.nan
     },
     "charge": {
         "R": 1, "K": 1, "D": -1, "E": -1, "H": 0.1, "A": 0, "C": 0, "F": 0, "G": 0, "I": 0,
-        "L": 0, "M": 0, "N": 0, "P": 0, "Q": 0, "S": 0, "T": 0, "V": 0, "W": 0, "Y": 0
+        "L": 0, "M": 0, "N": 0, "P": 0, "Q": 0, "S": 0, "T": 0, "V": 0, "W": 0, "Y": 0, "X": np.nan
     },
     "polarity": {
         "R": 1, "N": 1, "D": 1, "Q": 1, "E": 1, "H": 1, "K": 1, "S": 1, "T": 1, "Y": 1,
-        "A": 0, "C": 0, "F": 0, "G": 0, "I": 0, "L": 0, "M": 0, "P": 0, "V": 0, "W": 0
+        "A": 0, "C": 0, "F": 0, "G": 0, "I": 0, "L": 0, "M": 0, "P": 0, "V": 0, "W": 0, "X": np.nan
     },
     "acceptor": {
         "D": 1, "E": 1, "N": 1, "Q": 1, "H": 1, "S": 1, "T": 1, "Y": 1,
-        "A": 0, "C": 0, "F": 0, "G": 0, "I": 0, "K": 0, "L": 0, "M": 0, "P": 0, "R": 0, "V": 0, "W": 0
+        "A": 0, "C": 0, "F": 0, "G": 0, "I": 0, "K": 0, "L": 0, "M": 0, "P": 0, "R": 0, "V": 0, "W": 0, "X": np.nan
     },
     "donor": {
         "R": 1, "K": 1, "W": 1, "N": 1, "Q": 1, "H": 1, "S": 1, "T": 1, "Y": 1,
-        "A": 0, "C": 0, "D": 0, "E": 0, "F": 0, "G": 0, "I": 0, "L": 0, "M": 0, "P": 0, "V": 0
+        "A": 0, "C": 0, "D": 0, "E": 0, "F": 0, "G": 0, "I": 0, "L": 0, "M": 0, "P": 0, "V": 0, "X": np.nan
     }
 }
 
@@ -51,43 +56,18 @@ three_to_one = {
     "ALA": "A", "CYS": "C", "ASP": "D", "GLU": "E", "PHE": "F", "GLY": "G",
     "HIS": "H", "ILE": "I", "LYS": "K", "LEU": "L", "MET": "M", "ASN": "N",
     "PRO": "P", "GLN": "Q", "ARG": "R", "SER": "S", "THR": "T", "VAL": "V",
-    "TRP": "W", "TYR": "Y"
+    "TRP": "W", "TYR": "Y", "UNK": "X"
 }
 
 
-def parse_pdb(file_path):
-    name = os.path.basename(file_path).replace('.pdb', '')
-    parser = PDB.PDBParser(QUIET=True)
-    structure = parser.get_structure(name, file_path)
 
-    seq = ''
-    coords = []
-
-    for model in structure:
-        for chain in model:
-            seq += ''.join([three_to_one[res.get_resname()] for res in chain if res.get_id()[0] == ' '])
-            # temp_coords = []
-            atom_names = ['N', 'CA', 'C', 'O']
-
-            for res in chain:
-                if res.get_resname() in three_to_one.keys():
-                    coord_dict = {atom.get_name(): atom.get_coord().tolist() for atom in res if atom.get_name() in atom_names}
-                    if all(atom in coord_dict for atom in atom_names):  # Ensure all atoms are present
-                        # temp_coords.append([coord_dict[atom] for atom in atom_names])
-                        temp_coords = [coord_dict[atom] for atom in atom_names]
-                        if len(temp_coords) == 4:  # Collect 4 sets of coordinates
-                            coords.append(temp_coords)
-                            # temp_coords = []
-
-    return {'name': name, 'seq': seq, 'coords': coords}
-
-def parse_combined_pdb_data(predicted_pdb_path, ground_truth_pdb_path):
+def parse_combined_pdb_data(logits_path, ground_truth_pdb_path):
     """
-    Parses a predicted PDB for its sequence and a ground truth PDB for its coordinates,
+    Parses a logit file for its sequence and a ground truth PDB for its coordinates,
     concatenating data from all models and chains in each respective file.
 
     Args:
-        predicted_pdb_path (str): Path to the predicted PDB file (for sequence).
+        logits_path (str): Path to the logit file (for sequence).
         ground_truth_pdb_path (str): Path to the ground truth PDB file (for coordinates).
 
     Returns:
@@ -95,18 +75,26 @@ def parse_combined_pdb_data(predicted_pdb_path, ground_truth_pdb_path):
         otherwise None.
     """
     parser = PDB.PDBParser(QUIET=True)
-    name = os.path.basename(predicted_pdb_path).replace('.pdb', '')
+    name = os.path.basename(logits_path).replace('.pt', '')
 
-    # --- 1. Extract and concatenate sequence from ALL chains in the PREDICTED PDB ---
+    # --- 1. Extract and concatenate sequence from the logits file ---
     try:
-        structure_pred = parser.get_structure(f"{name}_pred", predicted_pdb_path)
-        final_predicted_seq = ""
-        for model_pred in structure_pred:
-            for chain_pred in model_pred:
-                chain_seq = ''.join([three_to_one.get(res.get_resname(), 'X') for res in chain_pred if is_aa(res)])
-                final_predicted_seq += chain_seq
+        logits = torch.load(logits_path)
+        # print('shape of logits: ', logits.shape)
+        probs = F.softmax(logits, dim=-1)
+        max_probs, predicted_indices = torch.max(probs, dim=-1)
+        
+        current_seq_list = []
+        for i in range(len(max_probs)):
+            if max_probs[i] > 0.9:
+                pred_token = tokenizer.convert_ids_to_tokens([predicted_indices[i].item()], skip_special_tokens=True)[0]
+                current_seq_list.append(pred_token)
+            else:
+                current_seq_list.append('X')
+        final_predicted_seq = "".join(current_seq_list)
+
     except Exception as e:
-        print(f"Warning: Could not parse sequence from predicted PDB {predicted_pdb_path}. Error: {e}")
+        print(f"Warning: Could not process logits file {logits_path}. Error: {e}")
         return None
 
     # --- 2. Extract and concatenate coordinates from ALL chains in the GROUND TRUTH PDB ---
@@ -117,7 +105,8 @@ def parse_combined_pdb_data(predicted_pdb_path, ground_truth_pdb_path):
         for model_gt in structure_gt:
             for chain_gt in model_gt:
                 for res in chain_gt:
-                    if is_aa(res):
+                    # if is_aa(res):
+                    if True:
                         coord_dict = {atom.get_name(): atom.get_coord().tolist() for atom in res if atom.get_name() in atom_names}
                         if all(atom in coord_dict for atom in atom_names):
                             temp_coords = [coord_dict[atom] for atom in atom_names]
@@ -125,7 +114,8 @@ def parse_combined_pdb_data(predicted_pdb_path, ground_truth_pdb_path):
     except Exception as e:
         print(f"Warning: Could not parse coordinates from ground truth PDB {ground_truth_pdb_path}. Error: {e}")
         return None
-
+    # print('length of final_predicted_seq: ',len(final_predicted_seq))
+    # print('length of final_gt_coords: ',len(final_gt_coords))
     # --- 3. CRITICAL: Check for length consistency ---
     if len(final_predicted_seq) != len(final_gt_coords):
         print(f"ERROR: Length mismatch for {name}. Predicted seq len: {len(final_predicted_seq)}, GT coords len: {len(final_gt_coords)}. Skipping.")
@@ -146,7 +136,7 @@ def create_pdb_structure(protein_data):
     
     aa_map = {'A': 'ALA', 'C': 'CYS', 'D': 'ASP', 'E': 'GLU', 'F': 'PHE', 'G': 'GLY', 'H': 'HIS',
               'I': 'ILE', 'K': 'LYS', 'L': 'LEU', 'M': 'MET', 'N': 'ASN', 'P': 'PRO', 'Q': 'GLN', 
-              'R': 'ARG', 'S': 'SER', 'T': 'THR', 'V': 'VAL', 'W': 'TRP', 'Y': 'TYR'}
+              'R': 'ARG', 'S': 'SER', 'T': 'THR', 'V': 'VAL', 'W': 'TRP', 'Y': 'TYR', "X": "UNK"}
     
     atom_names = ['N', 'CA', 'C', 'O']
     
@@ -187,7 +177,7 @@ def assign_features(surface, structure):
     for vertex in surface:
         dist, idx = kdtree.query(vertex)
         residue_type = residue_types[idx]
-        residue_features = [bio_feat_dict[feat].get(residue_type, 0) for feat in bio_feat_dict]
+        residue_features = [bio_feat_dict[feat].get(residue_type, np.nan) for feat in bio_feat_dict]
         features.append(residue_features)
     
     # Convert features to a numpy array
@@ -296,31 +286,22 @@ def compress_surface(points, features, down_sample_ratio, min_points_per_cube=32
 # Step 5: Add interior points
 # Function to get biochemical features from a residue
 def get_biochem_features(residue):
-    # Define hydrophobicity scale (Kyte-Doolittle)
-    hydrophobicity_scale = {
-        'A': 1.8, 'C': 2.5, 'D': -3.5, 'E': -3.5, 'F': 2.8,
-        'G': -0.4, 'H': -3.2, 'I': 4.5, 'K': -3.9, 'L': 3.8,
-        'M': 1.9, 'N': -3.5, 'P': -1.6, 'Q': -3.5, 'R': -4.5,
-        'S': -0.8, 'T': -0.7, 'V': 4.2, 'W': -0.9, 'Y': -1.3
-    }
+    """
+    Looks up the biochemical features for a given residue using the global bio_feat_dict.
+    Returns np.nan for any feature of an unknown residue type.
+    """
+    # Convert the residue's three-letter code to a one-letter code
+    res_3letter = residue.get_resname()
+    # res_1letter = seq1(res_3letter)
+    res_1letter = three_to_one.get(res_3letter, 'X')
+
+    # Look up each feature from the global bio_feat_dict, defaulting to np.nan
+    hydrophobicity = bio_feat_dict["hydrophobicity"].get(res_1letter, np.nan)
+    charge = bio_feat_dict["charge"].get(res_1letter, np.nan)
+    polarity = bio_feat_dict["polarity"].get(res_1letter, np.nan)
+    acceptor = bio_feat_dict["acceptor"].get(res_1letter, np.nan)
+    donor = bio_feat_dict["donor"].get(res_1letter, np.nan)
     
-    # Define charge scale
-    charge_scale = {
-        'D': -1, 'E': -1, 'K': 1, 'R': 1, 'H': 0.1  # Histidine is partially charged
-    }
-    
-    # Define polarity, acceptor, and donor features as shown in the image
-    polarity_scale = {'R': 1, 'N': 1, 'D': 1, 'Q': 1, 'E': 1, 'H': 1, 'K': 1, 'S': 1, 'T': 1, 'Y': 1}
-    acceptor_scale = {'D': 1, 'E': 1, 'N': 1, 'Q': 1, 'H': 1, 'S': 1, 'T': 1, 'Y': 1}
-    donor_scale = {'R': 1, 'K': 1, 'W': 1, 'N': 1, 'Q': 1, 'H': 1, 'S': 1, 'T': 1, 'Y': 1}
-    
-    res_3letter = residue.get_resname()  # Get the three-letter code
-    res_1letter = seq1(res_3letter)  # Convert to one-letter code
-    hydrophobicity = hydrophobicity_scale.get(res_1letter, 0)
-    charge = charge_scale.get(res_1letter, 0)
-    polarity = polarity_scale.get(res_1letter, 0)
-    acceptor = acceptor_scale.get(res_1letter, 0)
-    donor = donor_scale.get(res_1letter, 0)
     return np.array([hydrophobicity, charge, polarity, acceptor, donor])
 
 
@@ -328,19 +309,25 @@ def add_interior_points(surface_points, surface_features, structure):
     # Extract residue info and calculate biochemical features
     coords = []
     features = []
-
+    record = 0
+    n_is_aa = 0
     for model in structure:
         for chain in model:
             for residue in chain:
-                if is_aa(residue) and 'CA' in residue:
+                record += 1
+                # if is_aa(residue) and 'CA' in residue:
+                if 'CA' in residue:
+                    n_is_aa += 1
                     res_coord = residue['CA'].get_coord()  # Get alpha carbon coordinates
                     res_features = get_biochem_features(residue)
 
                     coords.append(res_coord)
                     features.append(res_features)
-
+    # print('record: ', record)
+    # print('n_is_aa:', n_is_aa)
     coords = np.array(coords)
     features = np.array(features)
+    # print('shape of coored: ', coords.shape)
 
     # Build a KDTree for fast nearest-neighbor search
     kdtree = cKDTree(coords)
@@ -463,7 +450,7 @@ def get_sequence_from_pdb(pdb_file_path):
         sequence = "".join(
             three_to_one.get(residue.get_resname(), 'X') 
             for residue in chain 
-            if is_aa(residue)
+            # if is_aa(residue)
         )
         return sequence
     except Exception as e:
@@ -569,36 +556,40 @@ def update_sequences_with_ground_truth(json_file_path, pkl_file_path, gt_pdb_dir
 
 
 if __name__ == "__main__":
-    # Define paths for predicted and ground truth PDBs
-    predicted_pdb_folder = './predicted_pdb/UBC2Model-bcmask1.01/CATH4.2'
+    # Define paths for logits and ground truth PDBs
+    logits_folder = './logits/UBC2Model-bcmask1.01/CATH4.2'
     gt_pdb_folder = './gt_pdb/CATH4.2'
     
-    pdb_files = [f for f in os.listdir(predicted_pdb_folder) if f.endswith('.pdb')]
+    # Change here: Read .pt files instead of .pdb files
+    logits_files = [f for f in os.listdir(logits_folder) if f.endswith('.pt')]
     data = []
 
-    print("--- Creating initial dataset from predicted sequences and ground truth coordinates ---")
-    for pdb_file in tqdm(pdb_files, desc="Parsing PDBs"):
-        predicted_path = os.path.join(predicted_pdb_folder, pdb_file)
-        gt_path = os.path.join(gt_pdb_folder, pdb_file) # Assumes file names match
+    print("--- Creating initial dataset from logits sequences and ground truth coordinates ---")
+    for logit_file in tqdm(logits_files, desc="Parsing data"):
+        logits_path = os.path.join(logits_folder, logit_file)
+        
+        # Determine the corresponding ground truth PDB path based on the logit file name
+        name = logit_file.replace('.pt', '')
+        gt_path = os.path.join(gt_pdb_folder, f"{name}.pdb")
 
         if not os.path.exists(gt_path):
-            print(f"Warning: Corresponding ground truth PDB not found for {pdb_file}. Skipping.")
+            print(f"Warning: Corresponding ground truth PDB not found for {name}. Skipping.")
             continue
 
-        # Call the new function that combines data from two PDBs
-        combined_data = parse_combined_pdb_data(predicted_path, gt_path)
+        # Call the new function that combines data from a logit file and a PDB file
+        combined_data = parse_combined_pdb_data(logits_path, gt_path)
         
         if combined_data:
             data.append(combined_data)
 
     # --- The rest of the script remains the same ---
 
-    # Create dataset name from the folder path
-    if predicted_pdb_folder.startswith('./'):
-        path_without_prefix = predicted_pdb_folder[2:]
+    # Create dataset name from the logits folder path
+    if logits_folder.startswith('./'):
+        path_without_prefix = logits_folder[2:]
     else:
-        path_without_prefix = predicted_pdb_folder
-    dataset_name = path_without_prefix.replace('/', '-')
+        path_without_prefix = logits_folder
+    dataset_name = path_without_prefix.replace('/', '-') + '-thr0.9'
 
     # Create and save the initial JSON file
     output_data_dir = os.path.join('./data', dataset_name)

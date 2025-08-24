@@ -76,32 +76,32 @@ class DInterface(DInterface_base):
             self.hparams['version'] = 4.2
             self.hparams['path'] = osp.join(self.hparams.data_root, 'cath4.2')
 
-        if name == 'CATHAFDB':
+        elif name == 'CATHAFDB':
             from src.datasets.cathafdb_dataset import CATHAFDBDataset
             self.data_module = CATHAFDBDataset
             self.hparams['version'] = 4.2
             self.hparams['path_cath'] = osp.join(self.hparams.data_root, 'cath4.2')
             self.hparams['path_afdb'] = osp.join(self.hparams.data_root, 'afdb-large4000')
 
-        if name == 'TS50':
+        elif name == 'TS50':
             from src.datasets.ts_dataset  import TS50Dataset
             self.data_module = TS50Dataset
             self.hparams['path'] = osp.join(self.hparams.data_root, 'ts50')
 
-        if name == 'TS500':
+        elif name == 'TS500':
             from src.datasets.ts_dataset  import TS500Dataset
             self.data_module = TS500Dataset
             self.hparams['path'] = osp.join(self.hparams.data_root, 'ts500')
 
-        if name == 'AFDB2000':
+        elif name == 'AFDB2000':
             from src.datasets.afdb_dataset  import AFDB2000Dataset
             self.data_module = AFDB2000Dataset
             self.hparams['path'] = osp.join(self.hparams.data_root, 'afdb2000')
 
-        if name == 'predicted_pdb-UBC2Model-bcmask1.01-CATH4.2':
+        else:
             from src.datasets.inference_dataset  import InferenceDataset
             self.data_module = InferenceDataset
-            self.hparams['path'] = osp.join(self.hparams.data_root, 'predicted_pdb-UBC2Model-bcmask1.01-CATH4.2')
+            self.hparams['path'] = osp.join(self.hparams.data_root, name)
 
     def instancialize(self, **other_args):
         """ Instancialize a model using the corresponding parameters
