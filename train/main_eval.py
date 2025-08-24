@@ -2,7 +2,7 @@ import datetime
 import os
 import sys
 sys.path.append(os.getcwd())
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 # os.environ['NCCL_P2P_DISABLE'] = '1'
 
 import warnings
@@ -20,7 +20,7 @@ torch.autograd.set_detect_anomaly(True)
 def create_parser():
     checkpoint_path = './UBC2Model.ckpt'
     ex_name = 'UBC2Model'
-    batch_size = 1
+    batch_size = 2
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--res_dir', default='./train/results', type=str)
@@ -55,6 +55,8 @@ def create_parser():
     parser.add_argument('--contrastive_pretrain', default=False, type=bool)
 
     parser.add_argument('--if_struc_only', default=False, type=bool)
+    parser.add_argument('--exp_bc_mask_rate', default=0., type=float)
+    parser.add_argument('--exp_backbone_noise_sd', default=0., type=float)
 
     args = parser.parse_args()
     return args

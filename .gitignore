@@ -157,6 +157,7 @@ requirements/
 tools/prepare_data/
 lightning_logs/
 predicted_pdb/
+/logits
 raw_test_data/
 test_results/
 alphafolddb/

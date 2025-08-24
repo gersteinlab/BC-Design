@@ -50,6 +50,7 @@ class PointCloudMessagePassing(nn.Module):
         self.bc_mask_how = args.bc_mask_how
         self.if_struc_only = args.if_struc_only
         print('if_struc_only', self.if_struc_only)
+        self.exp_bc_mask_rate = args.exp_bc_mask_rate
 
         # CLS token for biochemical features initialized with per_layer_dim
         self.biochem_cls_token = nn.Parameter(torch.randn(1 + 8, self.per_layer_dim))  # Adjusted dimension
@@ -99,6 +100,14 @@ class PointCloudMessagePassing(nn.Module):
                 biochem_feats[:] = self.bc_mask_token
             elif self.bc_mask_how == 'gauss':
                 biochem_feats[:] = torch.randn_like(biochem_feats)
+
+        # select the indices of the biochemical features to be masked
+        bc_mask_indices = torch.rand(B, N, device=biochem_feats.device) < self.exp_bc_mask_rate
+        # mask the biochemical features
+        if self.bc_mask_how == 'token':
+            biochem_feats[bc_mask_indices] = self.bc_mask_token
+        elif self.bc_mask_how == 'gauss':
+            biochem_feats[bc_mask_indices] = torch.randn_like(biochem_feats[bc_mask_indices])        
 
         if self.training:
             # randomly select a probability between 0 and self.bc_mask_max_rate
@@ -736,7 +745,6 @@ class UBC2Model(nn.Module):
         self.contrastive_loss_global_alpha = args.contrastive_loss_global_alpha
         self.contrastive_loss_local_alpha = args.contrastive_loss_local_alpha
 
-        self.if_struc_only = args.if_struc_only
         self.if_strucenc_only = args.if_strucenc_only
 
         self.if_warmup_train = args.if_warmup_train

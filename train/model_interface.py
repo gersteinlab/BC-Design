@@ -549,7 +549,8 @@ class MInterface(MInterface_base):
         results = self.model(batch)
         end_time = time.time()
         self.inference_times.append(end_time - start_time)
-        log_probs, mask, logits = results['log_probs'], batch['mask'], batch['logits']
+        log_probs, mask = results['log_probs'], batch['mask']
+        logits = results['logits']
         batch_ids = batch['batch_id']
 
         # X = batch['X']

@@ -40,11 +40,12 @@ class DInterface(DInterface_base):
         super().__init__(**kwargs)
         self.save_hyperparameters()
         self.load_data_module()
+        self.exp_backbone_noise_sd = kwargs.get('exp_backbone_noise_sd', 0.0)
 
     def setup(self, stage=None):
         from src.datasets.featurizer import (featurize_UBC2Model)
         if self.hparams.model_name == 'UBC2Model':
-            self.collate_fn = featurize_UBC2Model().featurize
+            self.collate_fn = featurize_UBC2Model(exp_backbone_noise_sd=self.exp_backbone_noise_sd).featurize
     
         # Assign train/val datasets for use in dataloaders
         if stage == 'fit' or stage is None:

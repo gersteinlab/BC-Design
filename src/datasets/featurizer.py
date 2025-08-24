@@ -60,10 +60,11 @@ class MyTokenizer:
         
 
 class featurize_UBC2Model:
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         self.tokenizer = MyTokenizer()
         # self.tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers")
         self.virtual_frame_num = 3
+        self.exp_backbone_noise_sd = kwargs.get('exp_backbone_noise_sd', 0.0)
 
     def _get_features_persample(self, batch):
         # uniif struc featurizer
@@ -208,6 +209,21 @@ class featurize_UBC2Model:
         return batch
     
     def featurize(self,batch):
+        if self.exp_backbone_noise_sd != 0:
+            # print('backbone noise sd: ', self.exp_backbone_noise_sd)
+            # Iterate over each protein sample in the batch list
+            for protein_sample in batch:
+                # List of keys corresponding to backbone atom coordinates
+                coord_keys = ['N', 'CA', 'C', 'O']
+                for key in coord_keys:
+                    # Get the original coordinates (e.g., shape [num_residues, 3])
+                    coords = protein_sample[key]
+                    # Generate Gaussian noise with the same shape as the coordinates.
+                    # The noise is centered at 0.0 with the specified standard deviation.
+                    noise = np.random.normal(loc=0.0, scale=self.exp_backbone_noise_sd, size=coords.shape)
+                    # Add the noise to the original coordinates and update the sample in place
+                    protein_sample[key] = coords + noise
+
         # deepcopy batch
         batch_copy = copy.deepcopy(batch)
         res = []
