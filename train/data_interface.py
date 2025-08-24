@@ -98,6 +98,11 @@ class DInterface(DInterface_base):
             self.data_module = AFDB2000Dataset
             self.hparams['path'] = osp.join(self.hparams.data_root, 'afdb2000')
 
+        if name == 'predicted_pdb-UBC2Model-bcmask1.01-CATH4.2':
+            from src.datasets.inference_dataset  import InferenceDataset
+            self.data_module = InferenceDataset
+            self.hparams['path'] = osp.join(self.hparams.data_root, 'predicted_pdb-UBC2Model-bcmask1.01-CATH4.2')
+
     def instancialize(self, **other_args):
         """ Instancialize a model using the corresponding parameters
             from self.hparams dictionary. You can also input any args

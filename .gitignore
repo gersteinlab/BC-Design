@@ -178,6 +178,8 @@ environment-full-deprecated.yml
 process_test_datasets.ipynb
 test.py
 visualization*
+create_cath42test_json.py
+pred_pdb2jsonpkl.py
 
 # Pytorch
 *.pth
