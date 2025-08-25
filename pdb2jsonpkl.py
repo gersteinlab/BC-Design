@@ -419,111 +419,14 @@ def get_sequence_from_pdb(pdb_file_path):
         return None
 
 
-def update_sequences_with_ground_truth(json_file_path, pkl_file_path, gt_pdb_dir):
-    """
-    Updates the 'seq' field in the generated json and pkl files with sequences
-    from ground truth PDB files. It performs a length check before replacement.
-    
-    Args:
-        json_file_path (str): Path to the generated JSON file.
-        pkl_file_path (str): Path to the generated PKL file.
-        gt_pdb_dir (str): Directory containing the ground truth PDB files.
-    """
-    print("\n--- Starting sequence replacement with ground truth ---")
-    
-    # --- 1. Update JSON file ---
-    print(f"\nProcessing JSON file: {json_file_path}")
-    try:
-        with open(json_file_path, 'r') as f:
-            json_data = json.load(f)
-
-        mismatches = []
-        for protein in tqdm(json_data, desc="Updating JSON sequences"):
-            name = protein['name']
-            gt_pdb_path = os.path.join(gt_pdb_dir, f"{name}.pdb")
-
-            if not os.path.exists(gt_pdb_path):
-                print(f"Warning: Ground truth PDB not found for {name} at {gt_pdb_path}")
-                continue
-
-            gt_seq = get_sequence_from_pdb(gt_pdb_path)
-            if gt_seq is None:
-                continue
-                
-            predicted_seq = protein['seq']
-
-            # CRITICAL: Check if lengths are equal before replacing
-            if len(gt_seq) != len(predicted_seq):
-                mismatches.append(name)
-                continue # Skip replacement if lengths do not match
-            
-            protein['seq'] = gt_seq
-
-        if mismatches:
-            print(f"\nERROR: Found {len(mismatches)} proteins with sequence length mismatch in JSON file.")
-            print("The sequences for these proteins were NOT replaced:", mismatches)
-        else:
-            print("All sequence lengths in JSON matched successfully.")
-
-        # Save the updated data back to the JSON file
-        with open(json_file_path, 'w') as f:
-            json.dump(json_data, f, indent=4)
-        print("JSON file has been updated and saved.")
-
-    except Exception as e:
-        print(f"An error occurred while processing the JSON file: {e}")
-
-    # --- 2. Update PKL file ---
-    print(f"\nProcessing PKL file: {pkl_file_path}")
-    try:
-        with open(pkl_file_path, 'rb') as f:
-            pkl_data = pickle.load(f)
-
-        mismatches = []
-        for name, protein_data in tqdm(pkl_data.items(), desc="Updating PKL sequences"):
-            gt_pdb_path = os.path.join(gt_pdb_dir, f"{name}.pdb")
-
-            if not os.path.exists(gt_pdb_path):
-                print(f"Warning: Ground truth PDB not found for {name} at {gt_pdb_path}")
-                continue
-
-            gt_seq = get_sequence_from_pdb(gt_pdb_path)
-            if gt_seq is None:
-                continue
-
-            predicted_seq = protein_data['seq']
-
-            # CRITICAL: Check if lengths are equal
-            if len(gt_seq) != len(predicted_seq):
-                mismatches.append(name)
-                continue
-
-            protein_data['seq'] = gt_seq
-
-        if mismatches:
-            print(f"\nERROR: Found {len(mismatches)} proteins with sequence length mismatch in PKL file.")
-            print("The sequences for these proteins were NOT replaced:", mismatches)
-        else:
-            print("All sequence lengths in PKL matched successfully.")
-
-        # Save the updated data back to the PKL file
-        with open(pkl_file_path, 'wb') as f:
-            pickle.dump(pkl_data, f)
-        print("PKL file has been updated and saved.")
-
-    except Exception as e:
-        print(f"An error occurred while processing the PKL file: {e}")
-
-
-
 if __name__ == "__main__":
     # Define paths for predicted and ground truth PDBs
-    pdb_folder = './predicted_pdb/UBC2Model-bcmask1.01/CATH4.2'
+    pdb_folder = './data/antonia0824/pdbs'
     
     pdb_files = [f for f in os.listdir(pdb_folder) if f.endswith('.pdb')]
     data = []
 
-    print("--- Creating initial dataset from predicted sequences and ground truth coordinates ---")
+    print("--- Creating initial dataset ---")
     for pdb_file in tqdm(pdb_files, desc="Parsing PDBs"):
         predicted_path = os.path.join(pdb_folder, pdb_file)
 
@@ -536,11 +439,7 @@ if __name__ == "__main__":
     # --- The rest of the script remains the same ---
 
     # Create dataset name from the folder path
-    if predicted_pdb_folder.startswith('./'):
-        path_without_prefix = predicted_pdb_folder[2:]
-    else:
-        path_without_prefix = predicted_pdb_folder
-    dataset_name = path_without_prefix.replace('/', '-')
+    dataset_name = 'antonia0824'
 
     # Create and save the initial JSON file
     output_data_dir = os.path.join('./data', dataset_name)
@@ -549,16 +448,8 @@ if __name__ == "__main__":
 
     with open(json_output_path, 'w') as json_file:
         json.dump(data, json_file, indent=4)
-    print(f"\nInitial JSON (predicted seq, GT coords) saved to: {json_output_path}")
+    print(f"\nInitial JSON saved to: {json_output_path}")
 
     # Call the main function to process JSON and create PKL
     main(dataset_name)
     
-    pkl_output_path = os.path.join(output_data_dir, dataset_name + '.pkl')
-
-    # Finally, update sequences in both files to ground truth for final consistency
-    update_sequences_with_ground_truth(
-        json_file_path=json_output_path,
-        pkl_file_path=pkl_output_path,
-        gt_pdb_dir=gt_pdb_folder
-    )
