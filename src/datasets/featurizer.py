@@ -16,6 +16,8 @@ from transformers import AutoTokenizer
 from sklearn.neighbors import NearestNeighbors
 from src.tools import Rigid, Rotation, get_interact_feats
 import copy
+import json
+
 tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers") # mask token: 32
 
 
@@ -65,6 +67,22 @@ class featurize_UBC2Model:
         # self.tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers")
         self.virtual_frame_num = 3
         self.exp_backbone_noise_sd = kwargs.get('exp_backbone_noise_sd', 0.0)
+        self.partial_design = kwargs.get('partial_design', False)
+        self.design_region_path = kwargs.get('design_region_path', '')
+        self.design_regions = None # Initialize as None
+        
+        if self.partial_design:
+            print(f"Partial design is enabled. Loading design regions from: {self.design_region_path}")
+            try:
+                with open(self.design_region_path, 'r') as f:
+                    self.design_regions = json.load(f)
+                print("Successfully loaded design regions.")
+            except FileNotFoundError:
+                print(f"⚠️ WARNING: Design region file not found at {self.design_region_path}. Partial design will be disabled.")
+                self.partial_design = False
+            except json.JSONDecodeError:
+                print(f"⚠️ WARNING: Could not decode JSON from {self.design_region_path}. Partial design will be disabled.")
+                self.partial_design = False
 
     def _get_features_persample(self, batch):
         # uniif struc featurizer
@@ -328,6 +346,39 @@ class featurize_UBC2Model:
             orig_surfaces.append(torch.tensor(b['orig_surface'], dtype=torch.float32))
             surface_lengths.append(b['surface'].shape[0])
 
+            if self.partial_design and self.design_regions:
+                protein_name = b['title']
+                if protein_name in self.design_regions:
+                    # 1. Get the necessary data
+                    design_mask = torch.tensor(self.design_regions[protein_name], dtype=torch.bool)
+                    
+                    # Convert tensors to NumPy arrays for Scikit-learn (this is fast on CPU)
+                    ca_coords = torch.tensor(b['CA'], dtype=torch.float32).numpy()
+                    surface_coords = orig_surfaces[i].numpy()
+
+                    if len(design_mask) != len(ca_coords):
+                        print(f"⚠️ WARNING: Mismatch for '{protein_name}'. Mask length {len(design_mask)} != Residue count {len(ca_coords)}. Skipping masking.")
+                    else:
+                        # 2. Find the closest residue for each surface point (using NearestNeighbors)
+                        # Build the tree from the residue coordinates
+                        nbrs = NearestNeighbors(n_neighbors=1, algorithm='ball_tree').fit(ca_coords)
+                        
+                        # Find the index of the single nearest neighbor for each surface point
+                        distances, indices = nbrs.kneighbors(surface_coords)
+                        
+                        # `indices` has shape [num_surface_points, 1], so flatten it
+                        closest_residue_indices = indices.flatten()
+                        
+                        # 3. Create a mask for the surface points
+                        # Use the NumPy array of indices to look up values in the PyTorch design_mask
+                        surface_mask = design_mask[closest_residue_indices]
+                        
+                        # 4. Apply the mask to the features tensor
+                        features[i][surface_mask] = float('nan')
+
+                else:
+                    print(f"⚠️ WARNING: Protein '{protein_name}' not found in design region file. Skipping masking for this sample.")
+
         # Find the minimum surface length in the batch
         min_surface_length = min(surface_lengths)
 
@@ -353,6 +404,10 @@ class featurize_UBC2Model:
         surfaces_stacked = torch.stack(surfaces_downsampled, dim=0)
         features_stacked = torch.stack(features_downsampled, dim=0)
         orig_surfaces_stacked = torch.stack(orig_surfaces_downsampled, dim=0)
+
+        # # Calculate and print the proportion of NaN values
+        # nan_proportion = torch.isnan(features_stacked).sum() / features_stacked.numel()
+        # print(f"Proportion of NaN values in features_stacked: {nan_proportion.item():.2%}")
 
         mask = np.isfinite(np.sum(X, (2, 3))).astype(np.float32)  # atom mask
         numbers = np.sum(mask, axis=1).astype(np.int32)
