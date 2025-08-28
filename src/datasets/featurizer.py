@@ -495,7 +495,6 @@ class featurize_UBC2Model:
         mask_bool = (mask==1)
         S = torch.masked_select(S, mask_bool)
         mask = torch.masked_select(mask, mask_bool)
-
         return {
             "title": [b['title'] for b in batch],
             "X": X,

@@ -88,7 +88,6 @@ class PointCloudMessagePassing(nn.Module):
         ###### for inference with only backbone structure, bc input will be all nan
         # Find rows (over N) where any feature is nan, for each batch
         nan_rows = torch.any(torch.isnan(biochem_feats), dim=-1)  # shape: (B, N)
-        
         # Elevate the biochemical features
         biochem_feats = self.input_fc(biochem_feats)  # BxNx(per_layer_dim)
 

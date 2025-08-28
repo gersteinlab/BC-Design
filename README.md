@@ -113,7 +113,7 @@ To train the model or run inference with the pre-trained checkpoint, you need to
 
 As an alternative, you can also run the following commands:
 ```shell
-wget https://osf.io/download/683dcbe71618e6327085b39f/ -O UBC2Model.ckpt
+wget https://osf.io/download/xz34b/ -O UBC2Model.ckpt
 wget https://osf.io/download/683dd27930c7903aaf85b1f7/ -O data.zip
 unzip data.zip
 ````
