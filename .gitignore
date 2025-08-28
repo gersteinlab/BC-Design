@@ -167,9 +167,14 @@ figures/
 TMscore.cpp
 TMscore.f
 
+antonia*
+calc_diversity.py
+create_cath42test_json.py
+
 cath42_82.zip
 BC-Design.ckpt
 UBC2Model.ckpt
+UBC2Large.ckpt
 data_processing.ipynb
 data.zip
 environment-deprecated.yml
@@ -180,6 +185,7 @@ test.py
 visualization*
 create_cath42test_json.py
 pred_pdb2jsonpkl.py
+pred_pdb2jsonpkl-thr.py
 
 # Pytorch
 *.pth

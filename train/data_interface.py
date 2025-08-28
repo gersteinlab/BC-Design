@@ -46,7 +46,7 @@ class DInterface(DInterface_base):
 
     def setup(self, stage=None):
         from src.datasets.featurizer import (featurize_UBC2Model)
-        if self.hparams.model_name == 'UBC2Model':
+        if self.hparams.model_name == 'UBC2Model' or self.hparams.model_name == 'UBC2Large':
             self.collate_fn = featurize_UBC2Model(
                 exp_backbone_noise_sd=self.exp_backbone_noise_sd,
                 partial_design=self.partial_design,
