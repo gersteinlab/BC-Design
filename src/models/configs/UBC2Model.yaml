@@ -1,5 +1,6 @@
 res_dir: ./train/results
-ex_name: UBC2Model
+# ex_name: UBC2Model
+ex_name: debug
 dataset: CATH4.2
 model_name: UBC2Model
 lr: 0.0002

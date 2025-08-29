@@ -2,7 +2,8 @@ import datetime
 import os
 import sys
 sys.path.append(os.getcwd())
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4,5,6,7"
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -30,8 +31,7 @@ def create_parser():
     parser.add_argument('--check_val_every_n_epoch', default=1, type=int)
     
     parser.add_argument('--dataset', default='CATH4.2') # AF2DB_dataset, CATH_dataset
-    parser.add_argument('--model_name', default='UBC2Model', 
-        choices=['UBC2Model'])
+    parser.add_argument('--model_name', default='UBC2Model')
     parser.add_argument('--lr', default=0.0002, type=float, help='Learning rate')
     parser.add_argument('--lr_scheduler', default='onecycle')
     parser.add_argument('--offline', default=1, type=int)
@@ -57,6 +57,13 @@ def create_parser():
     parser.add_argument('--checkpoint_path', default=None, type=str, help='Path to a checkpoint to resume training')
 
     parser.add_argument('--contrastive_pretrain', default=False, type=bool)
+
+    parser.add_argument('--if_struc_only', default=False, type=bool)
+    parser.add_argument('--exp_bc_mask_rate', default=0., type=float)
+    parser.add_argument('--exp_backbone_noise_sd', default=0., type=float)
+
+    parser.add_argument('--partial_design', default=False, type=bool)
+    parser.add_argument('--design_region_path', default='')
 
     args = parser.parse_args()
     return args
