@@ -421,7 +421,8 @@ def get_sequence_from_pdb(pdb_file_path):
 
 if __name__ == "__main__":
     # Define paths for predicted and ground truth PDBs
-    pdb_folder = './data/antonia0824/pdbs'
+    # pdb_folder = './data/antonia0824/pdbs'
+    pdb_folder = './data/antonia0830/pdbs'
     
     pdb_files = [f for f in os.listdir(pdb_folder) if f.endswith('.pdb')]
     data = []
@@ -439,7 +440,8 @@ if __name__ == "__main__":
     # --- The rest of the script remains the same ---
 
     # Create dataset name from the folder path
-    dataset_name = 'antonia0824'
+    # dataset_name = 'antonia0824'
+    dataset_name = 'antonia0830'
 
     # Create and save the initial JSON file
     output_data_dir = os.path.join('./data', dataset_name)

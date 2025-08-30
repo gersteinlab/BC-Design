@@ -38,13 +38,17 @@ def sample_if_needed(data_dict, max_length=2000):
 
 
 class CATHDatasetSurfProPiFoldDenseLarge(data.Dataset):
-    def __init__(self, path='./', split='train', max_length=500, test_name='All', data=None, removeTS=0, version=4.2):
+    def __init__(self, path='./', split='train', max_length=500, test_name='All', data=None, removeTS=0, version=4.2, bc_indices=None):
         self.version = version
         self.path = path
         self.mode = split
         self.max_length = max_length
         self.test_name = test_name
         self.removeTS = removeTS
+        if bc_indices is None:
+            self.bc_indices = [0, 1]
+        else:
+            self.bc_indices = bc_indices
         
         if self.removeTS:
             self.remove = json.load(open(self.path + '/remove.json', 'r'))['remove']
@@ -165,7 +169,8 @@ class CATHDatasetSurfProPiFoldDenseLarge(data.Dataset):
                 'chain_encoding': np.ones(seq_length),
                 'orig_surface': data['surface'],
                 'surface': normalize_coordinates(data['surface']),
-                'features': data['features'][:, :2],
+                # 'features': data['features'][:, :2],
+                'features': data['features'][:, self.bc_indices],
                 # 'pc': data['pc'],
             }
             # ablation

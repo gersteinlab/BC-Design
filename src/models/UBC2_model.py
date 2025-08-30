@@ -748,6 +748,8 @@ class UBC2Model(nn.Module):
 
         self.if_warmup_train = args.if_warmup_train
 
+        self.bc_indices = self.bc_indices = getattr(args, 'bc_indices', [0, 1])
+
         # self.tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers")
         self.tokenizer = MyTokenizer()
 
@@ -757,9 +759,8 @@ class UBC2Model(nn.Module):
         l_max = 2
         num_scales = 4
         # best
-        self.surface_encoder = PointCloudMessagePassing(args, 2, 1, l_max, num_scales, hidden_dim)
-        # hyperparam exp
-        # self.surface_encoder = PointCloudMessagePassingMultiple(2, 1, l_max, num_scales, hidden_dim, num_mha_layers=4)
+        # self.surface_encoder = PointCloudMessagePassing(args, 2, 1, l_max, num_scales, hidden_dim)
+        self.surface_encoder = PointCloudMessagePassing(args, len(self.bc_indices), 1, l_max, num_scales, hidden_dim)
 
         # New Transformer decoder and MLP for final prediction
         decoder_layer = TransformerDecoderLayer(d_model=hidden_dim, nhead=8, dropout=dropout, batch_first=True)

@@ -1,6 +1,5 @@
 res_dir: ./train/results
-# ex_name: UBC2Model
-ex_name: debug
+ex_name: UBC2Model
 dataset: CATH4.2
 model_name: UBC2Model
 lr: 0.0002
@@ -11,6 +10,7 @@ seed: 112
 use_auxliary_data: 0
 pretrained_path: ''
 batch_size: 1
+accumulate_grad_batches: 1
 num_workers: 0
 min_length: 40
 data_root: ./data/

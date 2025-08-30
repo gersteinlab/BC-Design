@@ -530,7 +530,7 @@ class MInterface(MInterface_base):
         if self.hparams.model_name == 'Exp':
             contrastive_loss = results['contrastive_loss']
             loss += contrastive_loss
-        if self.hparams.model_name == 'UBC2Model' or self.hparams.model_name == 'UBC2Large':
+        if self.hparams.model_name == 'UBC2Model' or self.hparams.model_name == 'UBC2Large' or self.hparams.model_name == 'UBC01234':
             contrastive_loss = results['contrastive_loss']
             loss += contrastive_loss            
             
@@ -1340,7 +1340,7 @@ class MInterface(MInterface_base):
         params = OmegaConf.load(f'./src/models/configs/{self.hparams.model_name}.yaml')
         params.update(self.hparams)
 
-        if self.hparams.model_name == 'UBC2Model' or self.hparams.model_name == 'UBC2Large':
+        if self.hparams.model_name == 'UBC2Model' or self.hparams.model_name == 'UBC2Large' or self.hparams.model_name == 'UBC01234':
             from src.models.UBC2_model import UBC2Model
             self.model = UBC2Model(params)
 
