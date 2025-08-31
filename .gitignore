@@ -188,6 +188,8 @@ create_cath42test_json.py
 pred_pdb2jsonpkl.py
 pred_pdb2jsonpkl-thr.py
 
+figures_ncs_revision
+
 # Pytorch
 *.pth
 

@@ -60,6 +60,8 @@ def create_parser():
     parser.add_argument('--partial_design', default=False, type=bool)
     parser.add_argument('--design_region_path', default='')
 
+    parser.add_argument('--bc_indices', nargs='+', type=int, default=[0, 1])
+
     args = parser.parse_args()
     return args
 
