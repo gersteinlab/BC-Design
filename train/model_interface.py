@@ -675,9 +675,28 @@ class MInterface(MInterface_base):
 
             if existing_pdb is None:
                 esmfold_inputs = esmfold_tokenizer([pred_amino_acid_sequence], return_tensors="pt", add_special_tokens=False)
-                for k, v in esmfold_inputs.items():
-                    esmfold_inputs[k] = v.to(device)
-                esmfold_outputs = self.esmfold_model(**esmfold_inputs)
+                print('pass here', flush=True)
+                if len(pred_amino_acid_sequence) < 1000:
+                # if True:
+                    for k, v in esmfold_inputs.items():
+                        esmfold_inputs[k] = v.to(device)
+                    print('before esmfold_model', flush=True)
+                    esmfold_outputs = self.esmfold_model(**esmfold_inputs)
+                    print('after esmfold_model')
+                else:
+                    print(f"GPU OOM for {sample_title}. Retrying on CPU (this will be slow)...", flush=True)
+                    torch.cuda.empty_cache()
+
+                    # Move model and inputs to CPU
+                    self.esmfold_model.to("cpu")
+                    for k, v in esmfold_inputs.items():
+                        esmfold_inputs[k] = v.to("cpu")
+
+                    # Run on CPU (no autocast needed)
+                    esmfold_outputs = self.esmfold_model(**esmfold_inputs)
+
+                    # IMPORTANT: Move the model back to the GPU for the next sample
+                    self.esmfold_model.to(device)
 
                 # Convert outputs to PDB format and calculate pLDDT
                 pdb = convert_outputs_to_pdb(esmfold_outputs)[0]

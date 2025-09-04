@@ -70,7 +70,8 @@ class featurize_UBC2Model:
         self.partial_design = kwargs.get('partial_design', False)
         self.design_region_path = kwargs.get('design_region_path', '')
         self.design_regions = None # Initialize as None
-        
+        self.ig_baseline_data = kwargs.get('ig_baseline_data', False)
+
         if self.partial_design:
             print(f"Partial design is enabled. Loading design regions from: {self.design_region_path}")
             try:
@@ -242,6 +243,14 @@ class featurize_UBC2Model:
                     # Add the noise to the original coordinates and update the sample in place
                     protein_sample[key] = coords + noise
 
+        if self.ig_baseline_data:
+            for protein_sample in batch:
+                # List of keys corresponding to backbone atom coordinates
+                coord_keys = ['N', 'CA', 'C', 'O']
+                for key in coord_keys:
+                    coords = protein_sample[key]
+                    protein_sample[key] = np.random.normal(loc=0.0, scale=15., size=coords.shape)
+
         # deepcopy batch
         batch_copy = copy.deepcopy(batch)
         res = []
@@ -378,6 +387,9 @@ class featurize_UBC2Model:
 
                 else:
                     print(f"⚠️ WARNING: Protein '{protein_name}' not found in design region file. Skipping masking for this sample.")
+
+            if self.ig_baseline_data:
+                features[i][:] = float('nan')
 
         # Find the minimum surface length in the batch
         min_surface_length = min(surface_lengths)

@@ -87,7 +87,7 @@ if __name__ == "__main__":
     trainer_config = {
         'devices': gpu_count,
         'num_nodes': 1,  # Number of nodes to use for distributed training
-        "strategy": 'ddp_find_unused_parameters_true',
+        # "strategy": 'ddp_find_unused_parameters_true',
         'precision': 32,
         'accelerator': 'gpu',
         'callbacks': load_callbacks(args),

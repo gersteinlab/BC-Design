@@ -43,6 +43,7 @@ class DInterface(DInterface_base):
         self.exp_backbone_noise_sd = kwargs.get('exp_backbone_noise_sd', 0.0)
         self.partial_design = kwargs.get('partial_design', False)
         self.design_region_path = kwargs.get('design_region_path', '')
+        self.ig_baseline_data = kwargs.get('ig_baseline_data', False)
 
     def setup(self, stage=None):
         from src.datasets.featurizer import (featurize_UBC2Model)
@@ -50,7 +51,8 @@ class DInterface(DInterface_base):
             self.collate_fn = featurize_UBC2Model(
                 exp_backbone_noise_sd=self.exp_backbone_noise_sd,
                 partial_design=self.partial_design,
-                design_region_path=self.design_region_path
+                design_region_path=self.design_region_path,
+                ig_baseline_data=self.ig_baseline_data
                 ).featurize
     
         # Assign train/val datasets for use in dataloaders
