@@ -49,8 +49,9 @@ class PointCloudMessagePassing(nn.Module):
         self.bc_mask_max_rate = args.bc_mask_max_rate
         self.bc_mask_how = args.bc_mask_how
         self.if_struc_only = args.if_struc_only
-        print('if_struc_only', self.if_struc_only)
         self.exp_bc_mask_rate = args.exp_bc_mask_rate
+        self.exp_hydro_mask_rate = getattr(args, 'exp_hydro_mask_rate', 0.)
+        self.exp_charge_mask_rate = getattr(args, 'exp_charge_mask_rate', 0.)
 
         # CLS token for biochemical features initialized with per_layer_dim
         self.biochem_cls_token = nn.Parameter(torch.randn(1 + 8, self.per_layer_dim))  # Adjusted dimension
@@ -84,6 +85,9 @@ class PointCloudMessagePassing(nn.Module):
 
     def forward(self, surfaces, biochem_feats, correspondences):
         B, N, _ = surfaces.shape
+
+        hydro_mask_indices = torch.rand(B, N, device=biochem_feats.device) < self.exp_hydro_mask_rate
+        charge_mask_indices = torch.rand(B, N, device=biochem_feats.device) < self.exp_charge_mask_rate
 
         ###### for inference with only backbone structure, bc input will be all nan
         # Find rows (over N) where any feature is nan, for each batch
@@ -419,7 +423,9 @@ class GeneralGNN(nn.Module):
                  num_hidden, 
                  virtual_atom_num=32, 
                  dropout=0.1,
-                 mask_rate=0.15):
+                 mask_rate=0.15,
+                 exp_v_mask_rate=0., 
+                 exp_e_mask_rate=0.):
         super(GeneralGNN, self).__init__()
         self.__dict__.update(locals())
         self.geofeat = GeoFeat(geo_layer, num_hidden, virtual_atom_num, dropout)
@@ -442,11 +448,12 @@ class GeneralGNN(nn.Module):
             selected_indices = self.get_rand_idx(h_E, self.mask_rate)
             h_E[selected_indices] = self.mask_token.weight[1]
 
-            # selected_indices = (selected_indices[:,None,None] == edge_idx[None]).sum(dim=(0,1))
-            # h_E[selected_indices] = self.mask_token.weight[1]
+        if not self.training: # for ablation study
+            selected_indices = self.get_rand_idx(h_V, self.exp_v_mask_rate)
+            h_V[selected_indices] = self.mask_token.weight[0]
 
-            # h_V  = h_V + torch.rand_like(h_V)*self.mask_rate*1
-            # h_E  = h_E + torch.rand_like(h_E)*self.mask_rate*1
+            selected_indices = self.get_rand_idx(h_E, self.exp_e_mask_rate)
+            h_E[selected_indices] = self.mask_token.weight[1]            
         
         h_E = self.geofeat(h_V, h_E, T_ts, edge_idx, h_E_0)
         h_V = self.attention(h_V, h_E, edge_idx)
@@ -464,7 +471,9 @@ class StructureEncoder(nn.Module):
                  encoder_layer,
                  hidden_dim, 
                  dropout=0,
-                 mask_rate=0.15):
+                 mask_rate=0.15,
+                 exp_v_mask_rate=0., 
+                 exp_e_mask_rate=0.):
         """ Graph labeling network """
         super(StructureEncoder, self).__init__()
         self.__dict__.update(locals())
@@ -474,7 +483,9 @@ class StructureEncoder(nn.Module):
                  edge_layer, 
                  hidden_dim, 
                  dropout=dropout,
-                 mask_rate=mask_rate) for i in range(encoder_layer)])
+                 mask_rate=mask_rate,
+                 exp_v_mask_rate=exp_v_mask_rate,
+                 exp_e_mask_rate=exp_e_mask_rate) for i in range(encoder_layer)])
         self.s = nn.Linear(hidden_dim, 1)
     
     def forward(self, h_S,
@@ -504,9 +515,13 @@ class UniIFEncoder(nn.Module):
         self.hidden_dim = args.hidden_dim
         geo_layer, attn_layer, node_layer, edge_layer, encoder_layer, hidden_dim, dropout, mask_rate = args.geo_layer, args.attn_layer, args.node_layer, args.edge_layer, args.encoder_layer, args.hidden_dim, args.dropout, args.mask_rate
     
+        exp_v_mask_rate = getattr(args, 'exp_v_mask_rate', 0.)
+        exp_e_mask_rate = getattr(args, 'exp_e_mask_rate', 0.)
+
         self.node_embedding = build_MLP(2, 76, hidden_dim, hidden_dim)
         self.edge_embedding = build_MLP(2, 196+16, hidden_dim, hidden_dim)
-        self.encoder = StructureEncoder(geo_layer, attn_layer, node_layer, edge_layer, encoder_layer, hidden_dim, dropout, mask_rate)
+        self.encoder = StructureEncoder(geo_layer, attn_layer, node_layer, edge_layer, encoder_layer, hidden_dim, dropout, mask_rate,
+                                        exp_v_mask_rate, exp_e_mask_rate)
         # self.decoder = MLPDecoder(hidden_dim)
         self.chain_embeddings = nn.Embedding(2, 16)
 
@@ -748,7 +763,8 @@ class UBC2Model(nn.Module):
 
         self.if_warmup_train = args.if_warmup_train
 
-        self.bc_indices = self.bc_indices = getattr(args, 'bc_indices', [0, 1])
+        self.bc_indices = getattr(args, 'bc_indices', [0, 1])
+        self.exp_wo_bcgraph = getattr(args, 'exp_wo_bcgraph', False)
 
         # self.tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers")
         self.tokenizer = MyTokenizer()
@@ -897,12 +913,18 @@ class UBC2Model(nn.Module):
             # Add positional encoding to the inputs of the Transformer decoder
             h_V_unflattened = self.positional_encoding(h_V_unflattened)
             
-            decoder_output = self.transformer_decoder(
-                h_V_unflattened, h_surface, 
-                tgt_key_padding_mask=target_padding_mask, 
-                # ablation
-                memory_mask=ss_connection_mask
-            )
+            if self.exp_wo_bcgraph:
+                decoder_output = self.transformer_decoder(
+                    h_V_unflattened, h_surface, 
+                    tgt_key_padding_mask=target_padding_mask, 
+                )
+            else:
+                decoder_output = self.transformer_decoder(
+                    h_V_unflattened, h_surface, 
+                    tgt_key_padding_mask=target_padding_mask, 
+                    # ablation
+                    memory_mask=ss_connection_mask
+                )
 
             # Flatten decoder_output and remove padding
             mask = mask_unflattened.bool()

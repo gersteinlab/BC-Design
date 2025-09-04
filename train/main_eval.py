@@ -55,7 +55,12 @@ def create_parser():
 
     parser.add_argument('--if_struc_only', default=False, type=bool)
     parser.add_argument('--exp_bc_mask_rate', default=0., type=float)
+    parser.add_argument('--exp_hydro_mask_rate', default=0., type=float)
+    parser.add_argument('--exp_charge_mask_rate', default=0., type=float)
+    parser.add_argument('--exp_v_mask_rate', default=0., type=float)
+    parser.add_argument('--exp_e_mask_rate', default=0., type=float)
     parser.add_argument('--exp_backbone_noise_sd', default=0., type=float)
+    parser.add_argument('--exp_wo_bcgraph', default=False, type=bool)
 
     parser.add_argument('--partial_design', default=False, type=bool)
     parser.add_argument('--design_region_path', default='')

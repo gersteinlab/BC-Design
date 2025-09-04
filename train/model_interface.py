@@ -675,14 +675,11 @@ class MInterface(MInterface_base):
 
             if existing_pdb is None:
                 esmfold_inputs = esmfold_tokenizer([pred_amino_acid_sequence], return_tensors="pt", add_special_tokens=False)
-                print('pass here', flush=True)
                 if len(pred_amino_acid_sequence) < 1000:
                 # if True:
                     for k, v in esmfold_inputs.items():
                         esmfold_inputs[k] = v.to(device)
-                    print('before esmfold_model', flush=True)
                     esmfold_outputs = self.esmfold_model(**esmfold_inputs)
-                    print('after esmfold_model')
                 else:
                     print(f"GPU OOM for {sample_title}. Retrying on CPU (this will be slow)...", flush=True)
                     torch.cuda.empty_cache()
