@@ -86,12 +86,17 @@ class PointCloudMessagePassing(nn.Module):
     def forward(self, surfaces, biochem_feats, correspondences):
         B, N, _ = surfaces.shape
 
-        hydro_mask_indices = torch.rand(B, N, device=biochem_feats.device) < self.exp_hydro_mask_rate
-        charge_mask_indices = torch.rand(B, N, device=biochem_feats.device) < self.exp_charge_mask_rate
-
         ###### for inference with only backbone structure, bc input will be all nan
         # Find rows (over N) where any feature is nan, for each batch
         nan_rows = torch.any(torch.isnan(biochem_feats), dim=-1)  # shape: (B, N)
+
+        hydro_mask_indices = torch.rand(B, N, device=biochem_feats.device) < self.exp_hydro_mask_rate
+        charge_mask_indices = torch.rand(B, N, device=biochem_feats.device) < self.exp_charge_mask_rate
+        # biochem_feats[..., 0][hydro_mask_indices] = torch.randn_like(biochem_feats[..., 0][hydro_mask_indices])
+        # biochem_feats[..., 1][charge_mask_indices] = torch.randn_like(biochem_feats[..., 1][charge_mask_indices])
+        biochem_feats[..., 0][hydro_mask_indices] = biochem_feats[..., 0][hydro_mask_indices].mean()
+        biochem_feats[..., 1][charge_mask_indices] = biochem_feats[..., 1][charge_mask_indices].mean()
+
         # Elevate the biochemical features
         biochem_feats = self.input_fc(biochem_feats)  # BxNx(per_layer_dim)
 
