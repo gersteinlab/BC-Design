@@ -134,9 +134,17 @@ src/datasets/dataloader.py
 src/datasets/mpnn_dataset.py
 src/datasets/casp_dataset.py
 src/datasets/alphafold_dataset.py
+src/datasets/fast_dataloader.py
+
+src/interface/pretrain_interface.py
 
 src/models/configs/*.yaml
 !src/models/configs/UBC2Model.yaml
+
+src/tools/main_utils.py
+src/tools/metrics.py
+src/tools/parser.py
+src/tools/utils.py
 
 train/results
 train/ig*
@@ -174,6 +182,7 @@ TMscore.f
 antonia*
 calc_diversity.py
 create_cath42test_json.py
+json2pkl.py
 
 environment-deprecated.yml
 environment0601.yml
