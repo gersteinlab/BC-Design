@@ -112,6 +112,9 @@ venv.bak/
 *.pkl
 *.pkl.json
 *.log.json
+*.ckpt
+*.zip
+*.ipynb
 *.jpg
 bash
 data
@@ -172,16 +175,9 @@ antonia*
 calc_diversity.py
 create_cath42test_json.py
 
-cath42_82.zip
-BC-Design.ckpt
-UBC2Model.ckpt
-UBC2Large.ckpt
-data_processing.ipynb
-data.zip
 environment-deprecated.yml
 environment0601.yml
 environment-full-deprecated.yml
-process_test_datasets.ipynb
 test.py
 visualization*
 create_cath42test_json.py
