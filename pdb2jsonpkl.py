@@ -12,13 +12,12 @@ from Bio.SeqUtils import seq1
 from Bio.PDB.Polypeptide import is_aa
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 import warnings
-import argparse # Import the argparse library
 
 # Suppress PDBConstructionWarning
 warnings.simplefilter('ignore', PDBConstructionWarning)
 
 # Define MSMS executable path
-msms_exec = '/gpfs/gibbs/pi/gerstein/xt86/surface/msms/msms.x86_64Linux2.2.6.1'
+msms_exec = '/gpfs/gibbs/pi/gerstein/xt86/surface/msms/msms.x86_64Linux2.2.6.1' # replace with your own path
 os.chmod(msms_exec, 0o755)
 
 # Define the biochemical features dictionary
@@ -66,18 +65,15 @@ def parse_pdb(file_path):
     for model in structure:
         for chain in model:
             seq += ''.join([three_to_one[res.get_resname()] for res in chain if res.get_id()[0] == ' '])
-            # temp_coords = []
             atom_names = ['N', 'CA', 'C', 'O']
 
             for res in chain:
                 if res.get_resname() in three_to_one.keys():
                     coord_dict = {atom.get_name(): atom.get_coord().tolist() for atom in res if atom.get_name() in atom_names}
                     if all(atom in coord_dict for atom in atom_names):  # Ensure all atoms are present
-                        # temp_coords.append([coord_dict[atom] for atom in atom_names])
                         temp_coords = [coord_dict[atom] for atom in atom_names]
                         if len(temp_coords) == 4:  # Collect 4 sets of coordinates
                             coords.append(temp_coords)
-                            # temp_coords = []
 
     return {'name': name, 'seq': seq, 'coords': coords}
 
@@ -344,33 +340,22 @@ def main(dataset='afdb2000'):
         protein_dicts = json.load(f)
     
     combined_data = {}
-    # test_i = 0
     for protein_data in tqdm(protein_dicts, desc="Processing proteins"):
-        # if test_i < 4:
-        #     test_i += 1
-        #     continue
         structure = create_pdb_structure(protein_data)
-        # print('done struc')
-        # print(len(protein_data['seq']))
-        # print(len(protein_data['coords']))
         try:
             surface = get_surface(structure[0], MSMS=msms_exec)
         except Exception as e:
             print(f"Failed to generate surface for {protein_data['name']}: {e}")
             continue
-        # print('done surface')
         features = assign_features(surface, structure)
-        # print('done features')
         # Step 3: Smooth the surface
         smoothed_surface = gaussian_kernel_smoothing(surface)
-        # print('done smooth')
         # Step 4: Compress the surface and features using octree-based compression
         if len(smoothed_surface) > 5000:
             down_sample_ratio = 5000 / len(smoothed_surface)
             compressed_points, compressed_features = compress_surface(smoothed_surface, features, down_sample_ratio)
         else:
             compressed_points, compressed_features = smoothed_surface, features  # No down-sampling
-        # print('done compress')
         # Step 5: Add interior points
         final_surface, final_features = add_interior_points(compressed_points, compressed_features, structure)
         
@@ -388,40 +373,8 @@ def main(dataset='afdb2000'):
     return combined_data
 
 
-
-
-def get_sequence_from_pdb(pdb_file_path):
-    """
-    Parses a PDB file and returns the amino acid sequence of the first chain.
-    
-    Args:
-        pdb_file_path (str): The full path to the PDB file.
-
-    Returns:
-        str: The one-letter amino acid sequence, or None if parsing fails.
-    """
-    try:
-        parser = PDBParser()
-        structure = parser.get_structure("gt_structure", pdb_file_path)
-        
-        # Extract sequence from the first model and first chain
-        model = next(structure.get_models())
-        chain = next(model.get_chains())
-        
-        sequence = "".join(
-            three_to_one.get(residue.get_resname(), 'X') 
-            for residue in chain 
-            if is_aa(residue)
-        )
-        return sequence
-    except Exception as e:
-        print(f"Warning: Could not parse sequence from {pdb_file_path}. Error: {e}")
-        return None
-
-
 if __name__ == "__main__":
     # Define paths for predicted and ground truth PDBs
-    # pdb_folder = './data/antonia0824/pdbs'
     pdb_folder = './data/antonia0830/pdbs'
     
     pdb_files = [f for f in os.listdir(pdb_folder) if f.endswith('.pdb')]
@@ -440,7 +393,6 @@ if __name__ == "__main__":
     # --- The rest of the script remains the same ---
 
     # Create dataset name from the folder path
-    # dataset_name = 'antonia0824'
     dataset_name = 'antonia0830'
 
     # Create and save the initial JSON file
