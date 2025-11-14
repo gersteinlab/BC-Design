@@ -149,7 +149,6 @@ src/tools/utils.py
 
 train/results
 train/ig*
-train/main.py
 train/train.sh
 train/try_multi_train.py
 train/main_train.py
