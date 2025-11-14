@@ -1,19 +1,13 @@
-import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import TransformerDecoder, TransformerDecoderLayer
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
 from torch_scatter import scatter_sum, scatter_softmax
-from src.tools import gather_nodes, _dihedrals, _get_rbf, _orientations_coarse_gl_tuple, Rigid, Rotation
+from src.tools import Rigid, Rotation
 from src.datasets.featurizer import rbf
 import numpy as np
-from transformers import AutoTokenizer
 import math
-import copy
-
-
-pair_lst = ['N-N', 'C-C', 'O-O', 'Cb-Cb', 'Ca-N', 'Ca-C', 'Ca-O', 'Ca-Cb', 'N-C', 'N-O', 'N-Cb', 'Cb-C', 'Cb-O', 'O-C', 'N-Ca', 'C-Ca', 'O-Ca', 'Cb-Ca', 'C-N', 'O-N', 'Cb-N', 'C-Cb', 'O-Cb', 'C-O']
 
 
 def build_MLP(n_layers,dim_in, dim_hid, dim_out, dropout = 0.0, activation=nn.ReLU, normalize=True):
@@ -62,9 +56,6 @@ class PointCloudMessagePassing(nn.Module):
         # Linear layer for feature dimension adjustment
         self.input_fc = nn.Linear(feat_dim, self.per_layer_dim)
 
-        # # MHA module
-        # self.mha = nn.MultiheadAttention(embed_dim=self.per_layer_dim, num_heads=num_heads, batch_first=True)
-
         encoder_layer = TransformerEncoderLayer(
             d_model=self.per_layer_dim,      # 输入特征维度
             nhead=num_heads,                # 多头注意力的头数
@@ -92,15 +83,12 @@ class PointCloudMessagePassing(nn.Module):
 
         hydro_mask_indices = torch.rand(B, N, device=biochem_feats.device) < self.exp_hydro_mask_rate
         charge_mask_indices = torch.rand(B, N, device=biochem_feats.device) < self.exp_charge_mask_rate
-        # biochem_feats[..., 0][hydro_mask_indices] = torch.randn_like(biochem_feats[..., 0][hydro_mask_indices])
-        # biochem_feats[..., 1][charge_mask_indices] = torch.randn_like(biochem_feats[..., 1][charge_mask_indices])
         biochem_feats[..., 0][hydro_mask_indices] = biochem_feats[..., 0][hydro_mask_indices].mean()
         biochem_feats[..., 1][charge_mask_indices] = biochem_feats[..., 1][charge_mask_indices].mean()
 
         # Elevate the biochemical features
         biochem_feats = self.input_fc(biochem_feats)  # BxNx(per_layer_dim)
 
-        ###### for inference with only backbone structure, bc input will be all nan
         biochem_feats[nan_rows] = self.bc_mask_token
 
         if self.if_struc_only:
@@ -241,7 +229,6 @@ class PointCloudMessagePassing(nn.Module):
             padding_mask_flat = ~padding_mask.view(B * N, max_neighbors)  # (B*(N+1))xMaxNeighbors, invert mask for MHA
             
             # # Apply MHA over the padded regions
-            # attn_output, _ = self.mha(padded_feats_flat, padded_feats_flat, padded_feats_flat, key_padding_mask=padding_mask_flat)
             attn_output = self.attention_layers(padded_feats_flat, src_key_padding_mask=padding_mask_flat)
             
             # 11. Perform pooling over the region (e.g., mean pooling over valid points)
@@ -260,31 +247,12 @@ class PointCloudMessagePassing(nn.Module):
         return output_feats
 
 
-class MyTokenizer:
-    def __init__(self):
-        self.alphabet_protein = 'ACDEFGHIKLMNPQRSTVWY' # [X] for unknown token
-        self.alphabet_RNA = 'AUGC'
-    
-    def encode(self, seq, RNA=False):
-        if RNA:
-            return [self.alphabet_RNA.index(s) for s in seq]
-        else:
-            return [self.alphabet_protein.index(s) for s in seq]
-        
-    def decode(self, indices, RNA=False):
-        if RNA:
-            return ' '.join([self.alphabet_RNA[i] for i in indices])
-        else:
-            return ' '.join([self.alphabet_protein[i] for i in indices])
-
-
 class GeoFeat(nn.Module):
     def __init__(self, geo_layer, num_hidden, virtual_atom_num, dropout=0.0):
         super(GeoFeat, self).__init__()
         self.__dict__.update(locals())
         self.virtual_atom = nn.Linear(num_hidden, virtual_atom_num*3)
         self.virtual_direct = nn.Linear(num_hidden, virtual_atom_num*3)
-        # self.we_condition = build_MLP(geo_layer, 4*virtual_atom_num*3+9+16+272, num_hidden, num_hidden, dropout)
         self.we_condition = build_MLP(geo_layer, 4*virtual_atom_num*3+9+16+32, num_hidden, num_hidden, dropout)
         self.MergeEG = nn.Linear(num_hidden+num_hidden, num_hidden)
 
@@ -293,23 +261,10 @@ class GeoFeat(nn.Module):
         dst_idx = edge_idx[1]
         num_edge = src_idx.shape[0]
         num_atom = h_V.shape[0]
-        # print('shape of h_V', h_V.shape)
-        # print('shape of h_E', h_E.shape)
-        # print('shape of T_ts', T_ts.shape)
-        # print('shape of T_ts._rots._rot_mats', T_ts._rots._rot_mats.shape)
-        # print('shape of T_ts._trans', T_ts._trans.shape)
-        # print('T_ts[0]._rots._rot_mats', T_ts[0]._rots._rot_mats)
-        # print('T_ts[0]._rots._quats', T_ts[0]._rots._quats)
-        # print('T_ts[0]._trans', T_ts[0]._trans)
-        # print('shape of edge_idx', edge_idx.shape)
-        # print('shape of h_E_0', h_E_0.shape)
 
         # ==================== point cross attention =====================
         V_local = self.virtual_atom(h_V).view(num_atom,-1,3)
         V_edge = self.virtual_direct(h_E).view(num_edge,-1,3)
-        # print('V_local', V_local.shape)
-        # # print max of src_idx
-        # print('max of src_idx', src_idx.max())
         Ks = torch.cat([V_edge,V_local[src_idx].view(num_edge,-1,3)], dim=1)
         Qt = T_ts.apply(Ks)
         Ks = Ks.view(num_edge,-1)
@@ -317,16 +272,13 @@ class GeoFeat(nn.Module):
         V_edge = V_edge.reshape(num_edge,-1)
         quat_st = T_ts._rots._rot_mats[:, 0].reshape(num_edge, -1)
 
-
         RKs = torch.einsum('eij,enj->eni', T_ts._rots._rot_mats[:,0], V_local[src_idx].view(num_edge,-1,3))
         QRK = torch.einsum('enj,enj->en', V_local[dst_idx].view(num_edge,-1,3), RKs)
 
-        # H = torch.cat([Ks, Qt, quat_st, T_ts.rbf, h_E_0], dim=1)
         H = torch.cat([Ks, Qt, quat_st, T_ts.rbf, QRK], dim=1)
         G_e = self.we_condition(H)
         h_E = self.MergeEG(torch.cat([h_E, G_e], dim=-1))
         return h_E
-
 
 
 class PiFoldAttn(nn.Module):
@@ -345,7 +297,6 @@ class PiFoldAttn(nn.Module):
                                 nn.Linear(num_hidden,self.num_heads))
         self.W_O = nn.Linear(num_hidden, num_V, bias=False)
         self.gate = nn.Linear(num_hidden, num_V)
-
 
     def forward(self, h_V, h_E, edge_idx):
         src_idx = edge_idx[0]
@@ -393,7 +344,6 @@ class UpdateNode(nn.Module):
         h_V = h_V + dh
 
         # # ============== global attn - virtual frame
-        # print('batch_id', batch_id)
         uni = batch_id.unique()
         mat = (uni[:,None] == batch_id[None]).to(h_V.dtype)
         mat = mat/mat.sum(dim=1, keepdim=True)
@@ -401,6 +351,7 @@ class UpdateNode(nn.Module):
 
         h_V = h_V * F.sigmoid(self.V_MLP_g(c_V))[batch_id]
         return h_V
+
 
 class UpdateEdge(nn.Module):
     def __init__(self, edge_layer, num_hidden, dropout=0.1):
@@ -527,7 +478,6 @@ class UniIFEncoder(nn.Module):
         self.edge_embedding = build_MLP(2, 196+16, hidden_dim, hidden_dim)
         self.encoder = StructureEncoder(geo_layer, attn_layer, node_layer, edge_layer, encoder_layer, hidden_dim, dropout, mask_rate,
                                         exp_v_mask_rate, exp_e_mask_rate)
-        # self.decoder = MLPDecoder(hidden_dim)
         self.chain_embeddings = nn.Embedding(2, 16)
 
         # CLS token for structural features
@@ -546,8 +496,6 @@ class UniIFEncoder(nn.Module):
         # Remove global virtual frame variables
         T = Rigid(Rotation(batch['T_rot']), batch['T_trans'])
         T_ts = Rigid(Rotation(batch['T_ts_rot']), batch['T_ts_trans'])
-        # rbf_ts = batch['rbf_ts']
-        # T_ts.rbf = rbf_ts
         h_E = torch.cat([h_E, self.chain_embeddings(chain_features)], dim=-1)
 
         h_E_0 = h_E
@@ -557,8 +505,6 @@ class UniIFEncoder(nn.Module):
         # Prepare for adding CLS tokens
         B = len(batch_id.unique())   # Batch size
         max_nodes = 9 + max([(batch_id == i).sum().item() for i in range(B)])  # 9 CLS + max residues per batch
-        # print('max_nodes-9', max_nodes-9)
-        # print('max lenght', batch['lengths'].max().item())
         # Add CLS token embeddings to node embeddings
         # Directly add CLS tokens to the beginning of each batch in the original flattened node_embeds
         cls_tokens = self.struct_cls_token.expand(B, -1, -1)  # (B, 9, hidden_dim)
@@ -581,12 +527,10 @@ class UniIFEncoder(nn.Module):
             batch_id_with_cls.append(torch.full((9 + (batch_id == i).sum().item(),), i, device=batch_id.device))
         batch_id_with_cls = torch.cat(batch_id_with_cls, dim=0)
 
-        # h_E = self.edge_embedding(h_E).squeeze(-1)  # Convert edge features to 1D weights
         h_E = self.edge_embedding(h_E)
         h_E, edge_idx, T_ts = self._pad_and_stack_edges(h_E, batch_id, edge_idx, T_ts, max_nodes, correspondences)  # Shape: (total_edges, hidden_dim), (2, total_edges)
 
         h_S = None
-        # No global frame features needed
 
         # Get structural node embeddings from encoder (without global frames)
         node_embeds = self.encoder(h_S,
@@ -771,22 +715,15 @@ class UBC2Model(nn.Module):
         self.bc_indices = getattr(args, 'bc_indices', [0, 1])
         self.exp_wo_bcgraph = getattr(args, 'exp_wo_bcgraph', False)
 
-        # self.tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers")
-        self.tokenizer = MyTokenizer()
-
-        # self.encoder = GraphTransformerModel(hidden_dim=hidden_dim, n_layers=self.args.gt_layers, n_heads=8)
         self.encoder = UniIFEncoder(args)
 
         l_max = 2
         num_scales = 4
-        # best
-        # self.surface_encoder = PointCloudMessagePassing(args, 2, 1, l_max, num_scales, hidden_dim)
         self.surface_encoder = PointCloudMessagePassing(args, len(self.bc_indices), 1, l_max, num_scales, hidden_dim)
 
         # New Transformer decoder and MLP for final prediction
         decoder_layer = TransformerDecoderLayer(d_model=hidden_dim, nhead=8, dropout=dropout, batch_first=True)
         self.transformer_decoder = TransformerDecoder(decoder_layer, num_layers=3)
-        # self.transformer_decoder = TransformerDecoder(decoder_layer, num_layers=6)
         self.mlp = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
@@ -872,7 +809,6 @@ class UBC2Model(nn.Module):
             mask = (batch_id == idx)
             mask_unflattened[idx, :mask.sum()] = 1
         # Create padding masks
-        # target_padding_mask = (mask_unflattened == 0).to(h_V.device)  # [batch_size, seq_len]
         target_padding_mask = ~mask_unflattened.bool()
 
         ### surface encoder
@@ -882,7 +818,6 @@ class UBC2Model(nn.Module):
             # generate a random number between 0 and 1
             random_number = torch.rand(1).item()
             if random_number < self.modal_mask_ratio:
-                # biochem_feats = torch.ones_like(biochem_feats) * 100
                 biochem_feats = torch.randn_like(biochem_feats)
 
         if self.if_strucenc_only:
@@ -927,7 +862,6 @@ class UBC2Model(nn.Module):
                 decoder_output = self.transformer_decoder(
                     h_V_unflattened, h_surface, 
                     tgt_key_padding_mask=target_padding_mask, 
-                    # ablation
                     memory_mask=ss_connection_mask
                 )
 

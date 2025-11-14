@@ -7,7 +7,6 @@ lr_scheduler: onecycle
 # lr_scheduler: cosine
 offline: 0
 seed: 112
-use_auxliary_data: 0
 pretrained_path: ''
 batch_size: 1
 accumulate_grad_batches: 1
@@ -24,7 +23,6 @@ encoder_layer: 12
 hidden_dim: 128
 dropout: 0.0
 k_neighbors: 30
-virtual_frame_num: 8
 virtual_atom_num: 24
 bc_encoder_layer: 2
 
