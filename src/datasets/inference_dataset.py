@@ -57,9 +57,6 @@ class InferenceDataset(data.Dataset):
 
     def __len__(self):
         return len(self.data)
-    
-    def get_item(self, index):
-        return self.data[index]
 
     def __getitem__(self, index):
         return self.data[index]

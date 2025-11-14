@@ -1,16 +1,7 @@
 import torch
 import numpy as np
 import random
-import itertools
-import torch.nn.functional as F
-import math
-import torch_geometric
-import torch_cluster
-from collections.abc import Mapping, Sequence
-from torch_geometric.data import Data, Batch
 from torch_geometric.nn.pool import knn_graph
-from torch.utils.data.dataloader import default_collate
-from torch.nn.utils.rnn import pad_sequence
 from torch_scatter import scatter_sum
 from transformers import AutoTokenizer
 from sklearn.neighbors import NearestNeighbors
@@ -21,7 +12,6 @@ import json
 tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers") # mask token: 32
 
 
-
 def pad_ss_connections(ss_connections, max_residues, max_surface_atoms):
     """ Pad ss_connections to the maximum number of residues and surface atoms in the batch """
     B = len(ss_connections)
@@ -29,7 +19,6 @@ def pad_ss_connections(ss_connections, max_residues, max_surface_atoms):
     for i, ss_connection in enumerate(ss_connections):
         ss_connections_padded[i, :ss_connection.shape[0], :ss_connection.shape[1]] = ss_connection
     return ss_connections_padded
-
 
 
 def rbf(values, v_min, v_max, n_bins=16):
@@ -64,7 +53,6 @@ class MyTokenizer:
 class featurize_UBC2Model:
     def __init__(self, **kwargs) -> None:
         self.tokenizer = MyTokenizer()
-        # self.tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D", cache_dir="gaozhangyang/model_zoom/transformers")
         self.virtual_frame_num = 3
         self.exp_backbone_noise_sd = kwargs.get('exp_backbone_noise_sd', 0.0)
         self.partial_design = kwargs.get('partial_design', False)
@@ -105,7 +93,6 @@ class featurize_UBC2Model:
         chain_mask = torch.from_numpy(np.concatenate(batch['chain_mask'])).float()
         chain_encoding = torch.from_numpy(np.concatenate(batch['chain_encoding'])).float()
 
-
         X, S = X.unsqueeze(0), S.unsqueeze(0)
         mask = torch.isfinite(torch.sum(X,(2,3))).float() # atom mask
         numbers = torch.sum(mask, axis=1).int()
@@ -136,8 +123,6 @@ class featurize_UBC2Model:
         C_a = X[:,1,:]
         
         edge_idx = knn_graph(C_a, k=30, batch=batch_id, loop=True, flow='target_to_source')
-
-        
         
         N, CA, C = X[:,0], X[:,1], X[:,2]
 
@@ -165,7 +150,6 @@ class featurize_UBC2Model:
         D[2,2] = -1*d+1*(~d)
         V = D@V
         R = torch.matmul(U, V.permute(0,1))
-
 
         rot_g = [R]*num_global
         trans_g = [X_m]*num_global
@@ -229,7 +213,6 @@ class featurize_UBC2Model:
     
     def featurize(self,batch):
         if self.exp_backbone_noise_sd != 0:
-            # print('backbone noise sd: ', self.exp_backbone_noise_sd)
             # Iterate over each protein sample in the batch list
             for protein_sample in batch:
                 # List of keys corresponding to backbone atom coordinates
@@ -274,7 +257,6 @@ class featurize_UBC2Model:
             mask = idx>=num_node
             shift_combine = (~mask)*(shift_real) + (mask)*(shift_virtual)
             return idx+shift_combine
-
         
         ret = {}
         for key in batch[0].keys():
@@ -295,9 +277,6 @@ class featurize_UBC2Model:
                     dst_g = shift_node_idx(one['edge_idx_g'][1], num_nodes[idx], shift[idx], shift_virtual) 
                     edge_idx_g.append(torch.stack([src, dst_g]))
                 ret[key] = torch.cat(edge_idx_g, dim=1)
-                # edge_idx_g = torch.cat(edge_idx_g, dim=1)
-                # edge_idx_g_inv = edge_idx_g.flip((0,))
-                # ret[key] = torch.cat([edge_idx_g, edge_idx_g_inv], dim=1)
             elif key in ['batch_id', 'batch_id_g']:
                 ret[key] = torch.cat([one[key] + idx for idx, one in enumerate(batch)])
             elif key in ['K_g']:
@@ -331,12 +310,7 @@ class featurize_UBC2Model:
         correspondences = []
         
         for i, b in enumerate(batch):
-            # check if b['N'] is a list
             x = np.stack([b[c] for c in ['N', 'CA', 'C', 'O']], 1)  # [#atom, 4, 3]
-            # # check if x is [1, #atom, 4, 3]
-            # if x.shape[0] == 1 and len(x.shape) == 4:
-            #     # remove the 0th dimension
-            #     x = x.squeeze(0)
             
             l = len(b['seq'])
             x_pad = np.pad(x, [[0, L_max - l], [0, 0], [0, 0]], 'constant', constant_values=(np.nan,))  # [#atom, 4, 3]
@@ -344,7 +318,6 @@ class featurize_UBC2Model:
 
             # Convert to labels
             indices = np.array(tokenizer.encode(b['seq'], add_special_tokens=False))
-            # indices = np.array(self.tokenizer.encode(b['seq']))
             S[i, :l] = indices
             chain_mask[i, :l] = b['chain_mask']
             chain_encoding[i, :l] = b['chain_encoding']
@@ -417,10 +390,6 @@ class featurize_UBC2Model:
         features_stacked = torch.stack(features_downsampled, dim=0)
         orig_surfaces_stacked = torch.stack(orig_surfaces_downsampled, dim=0)
 
-        # # Calculate and print the proportion of NaN values
-        # nan_proportion = torch.isnan(features_stacked).sum() / features_stacked.numel()
-        # print(f"Proportion of NaN values in features_stacked: {nan_proportion.item():.2%}")
-
         mask = np.isfinite(np.sum(X, (2, 3))).astype(np.float32)  # atom mask
         numbers = np.sum(mask, axis=1).astype(np.int32)
         S_new = np.zeros_like(S)
@@ -462,7 +431,6 @@ class featurize_UBC2Model:
             
             ss_connections.append(torch.tensor(ss_connection, dtype=torch.float32))
 
-
             # 1. Calculate the distance matrix for valid_ca_coords
             ca_dist_matrix = np.linalg.norm(valid_ca_coords[:, None, :] - valid_ca_coords[None, :, :], axis=-1)
             max_dist = np.max(ca_dist_matrix)
@@ -489,7 +457,6 @@ class featurize_UBC2Model:
                 ])
             
             correspondences.append(batch_correspondences)
-
 
         # Pad ss_connections
         ss_connections_padded = pad_ss_connections(ss_connections, L_max, min_surface_length)

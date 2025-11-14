@@ -5,10 +5,7 @@ import numpy as np
 from tqdm import tqdm
 import random
 import torch.utils.data as data
-from .utils import cached_property
 from transformers import AutoTokenizer
-from sklearn.neighbors import NearestNeighbors
-import gc
 
 def normalize_coordinates(surface):
     """
@@ -21,20 +18,6 @@ def normalize_coordinates(surface):
     length = np.max(max_ - min_)
     normalized_surface = (surface - center) / length
     return normalized_surface
-
-
-def sample_if_needed(data_dict, max_length=2000):
-    for key, value in data_dict.items():
-        surface = value['surface']
-        features = value['features']
-        
-        if len(surface) > max_length:
-            indices = np.random.choice(len(surface), max_length, replace=False)
-            value['surface'] = surface[indices]
-            value['features'] = features[indices]
-    
-    return data_dict
-
 
 
 class CATHAFDBDataset(data.Dataset):
@@ -111,8 +94,6 @@ class CATHAFDBDataset(data.Dataset):
                     ], axis=1)  # shape: (L, 4, 3)
                     mask = np.isnan(coords).sum(axis=(1,2)) > 0
                     mask = mask | (np.isinf(coords).sum(axis=(1,2)) > 0)
-                    # print('shape of mask', mask.shape)
-                    # print('shape of entry[coords][CA]', len(entry['coords']['CA']))
                     # remove the positions where the mask is True
                     entry['coords']['CA'] = entry['coords']['CA'][~mask]
                     entry['coords']['C'] = entry['coords']['C'][~mask]
@@ -182,11 +163,6 @@ class CATHAFDBDataset(data.Dataset):
             _downcast_float32_inplace(data_dict)
             return data_dict
 
-    def change_mode(self, mode):
-        self.mode = mode
-        self.metadata = self._load_metadata()
-        self.data_dict = self._load_data_dict()
-
     def __len__(self):
         return len(self.metadata)
     
@@ -209,11 +185,7 @@ class CATHAFDBDataset(data.Dataset):
                 'orig_surface': data['surface'],
                 'surface': normalize_coordinates(data['surface']),
                 'features': data['features'][:, :2],
-                # 'pc': data['pc'],
             }
-            # ablation
-            # data_entry['features'][:, 0] = np.random.rand(data['features'][:, 0].shape[0])
-            # data_entry['features'][:, 1] = np.random.rand(data['features'][:, 1].shape[0])
 
             if self.mode == 'test':
                 data_entry['category'] = 'Unknown'
