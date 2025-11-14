@@ -1,17 +1,12 @@
-import sys; sys.path.append('/huyuqi/xmyu/DiffSDS')
 import inspect
 import torch
-from src.tools.utils import cuda
 import numpy as np
-import matplotlib.pyplot as plt
 import torch.nn as nn
 import os
 from torcheval.metrics.text import Perplexity
 from torcheval.metrics import MulticlassAccuracy, MulticlassPrecision, MulticlassRecall, MulticlassF1Score, BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score
 from src.interface.model_interface import MInterface_base
 import math
-import torch.nn.functional as F
-from torch.cuda.amp import autocast
 from omegaconf import OmegaConf
 from transformers import AutoTokenizer, EsmForProteinFolding
 from transformers.models.esm.openfold_utils.protein import to_pdb, Protein as OFProtein
@@ -25,7 +20,6 @@ from io import StringIO
 import subprocess
 import requests
 import time
-import copy
 import pandas as pd
 import statistics
 
@@ -45,32 +39,6 @@ residue_to_index = {
     'Q': 5,  'E': 6,  'G': 7,  'H': 8,  'I': 9,
     'L': 10, 'K': 11, 'M': 12, 'F': 13, 'P': 14,
     'S': 15, 'T': 16, 'W': 17, 'Y': 18, 'V': 19
-}
-
-class_names = ['Alpha', 'Beta', 'AlphaBeta', 'FewSecondaryStructures', 'Other']  # CATH class names
-
-bio_feat_dict = {
-    "hydrophobicity": {
-        "I": 4.5, "V": 4.2, "L": 3.8, "F": 2.8, "C": 2.5, "M": 1.9, "A": 1.8,
-        "W": -0.9, "G": -0.4, "T": -0.7, "S": -0.8, "Y": -1.3, "P": -1.6, "H": -3.2,
-        "N": -3.5, "D": -3.5, "Q": -3.5, "E": -3.5, "K": -3.9, "R": -4.5
-    },
-    "charge": {
-        "R": 1, "K": 1, "D": -1, "E": -1, "H": 0.1, "A": 0, "C": 0, "F": 0, "G": 0, "I": 0,
-        "L": 0, "M": 0, "N": 0, "P": 0, "Q": 0, "S": 0, "T": 0, "V": 0, "W": 0, "Y": 0
-    },
-    "polarity": {
-        "R": 1, "N": 1, "D": 1, "Q": 1, "E": 1, "H": 1, "K": 1, "S": 1, "T": 1, "Y": 1,
-        "A": 0, "C": 0, "F": 0, "G": 0, "I": 0, "L": 0, "M": 0, "P": 0, "V": 0, "W": 0
-    },
-    "acceptor": {
-        "D": 1, "E": 1, "N": 1, "Q": 1, "H": 1, "S": 1, "T": 1, "Y": 1,
-        "A": 0, "C": 0, "F": 0, "G": 0, "I": 0, "K": 0, "L": 0, "M": 0, "P": 0, "R": 0, "V": 0, "W": 0
-    },
-    "donor": {
-        "R": 1, "K": 1, "W": 1, "N": 1, "Q": 1, "H": 1, "S": 1, "T": 1, "Y": 1,
-        "A": 0, "C": 0, "D": 0, "E": 0, "F": 0, "G": 0, "I": 0, "L": 0, "M": 0, "P": 0, "V": 0
-    }
 }
 
 three_to_one = {
@@ -267,8 +235,6 @@ def save_pdbs_to_files(pdbs, titles, directory):
 
     for i, pdb in enumerate(pdbs):
         pdb_filename = os.path.join(directory, f'{titles[i]}.pdb')
-    #     with open(pdb_filename, 'w') as pdb_file:
-    #         pdb_file.write(pdb)
         pdb_io = StringIO(pdb)
         parser = PDB.PDBParser(QUIET=True)
         structure = parser.get_structure('structure', pdb_io)
@@ -515,22 +481,10 @@ class MInterface(MInterface_base):
                 if self.hparams.model_name == 'GVP':
                     loss = self.cross_entropy(log_probs, batch.seq)
                 else:
-                    # print('log_probs', log_probs.shape)
-                    # print('batch["S"]', batch['S'].shape)
                     loss = self.cross_entropy(log_probs, batch['S'])
                 loss = (loss*mask).sum()/(mask.sum())
 
-        if self.hparams.model_name == 'SBCModel':
-            contrastive_loss = results['contrastive_loss']
-            loss += contrastive_loss
-            # loss = 0.5 * loss + 0.5 * contrastive_loss
-        if self.hparams.model_name == 'SBC2Model' or self.hparams.model_name == 'SBC2Mask' or self.hparams.model_name == 'SBC2Revision':
-            contrastive_loss = results['contrastive_loss']
-            loss += contrastive_loss
-        if self.hparams.model_name == 'Exp':
-            contrastive_loss = results['contrastive_loss']
-            loss += contrastive_loss
-        if self.hparams.model_name == 'UBC2Model' or self.hparams.model_name == 'UBC2Large' or self.hparams.model_name == 'UBC01234':
+        if self.hparams.model_name == 'UBC2Model' or self.hparams.model_name == 'UBC2Large':
             contrastive_loss = results['contrastive_loss']
             loss += contrastive_loss            
             
@@ -552,10 +506,6 @@ class MInterface(MInterface_base):
         log_probs, mask = results['log_probs'], batch['mask']
         logits = results['logits']
         batch_ids = batch['batch_id']
-
-        # X = batch['X']
-        # sparse_idx = mask.nonzero() 
-        # X = X[sparse_idx[:,0], sparse_idx[:,1], :, :]
 
         device = log_probs.device
 
@@ -584,7 +534,6 @@ class MInterface(MInterface_base):
 
         # Get the unique batch IDs (corresponding to different samples in the batch)
         unique_batch_ids = torch.unique(batch_ids)
-        # print(unique_batch_ids)
 
         # Loop over each sample in the batch
         for sample_id in unique_batch_ids:
@@ -627,7 +576,6 @@ class MInterface(MInterface_base):
             # BLOSUM62-based NSSR calculation
             similar_pairs_count = 0
             total_residues = len(gt_amino_acid_sequence)
-            # print('length:', total_residues)
 
             # Loop through each pair of residues in the predicted and ground truth sequences
             for gt_residue, pred_residue in zip(gt_amino_acid_sequence, pred_amino_acid_sequence):
@@ -676,7 +624,6 @@ class MInterface(MInterface_base):
             if existing_pdb is None:
                 esmfold_inputs = esmfold_tokenizer([pred_amino_acid_sequence], return_tensors="pt", add_special_tokens=False)
                 if len(pred_amino_acid_sequence) < 1000:
-                # if True:
                     for k, v in esmfold_inputs.items():
                         esmfold_inputs[k] = v.to(device)
                     esmfold_outputs = self.esmfold_model(**esmfold_inputs)
@@ -751,8 +698,6 @@ class MInterface(MInterface_base):
                 for chain in model:
                     for i, residue in enumerate(chain):
                         sasa = residue.sasa  # 每个残基的 SASA 值
-                        # residue_letter = residue.get_resname()  # 获取三字母名称
-                        # single_letter = three_to_one[residue_letter]  # 映射到单字母
                         
                         if sasa > threshold:
                             surface_residues.append(i)
@@ -865,7 +810,6 @@ class MInterface(MInterface_base):
                 cath_class = fetch_cath_class(pdb_id)
                 self.cath_classes.append(cath_class)
 
-                # Append the metrics to the appropriate list based on the CATH class
                 # Append the metrics to the appropriate list based on the CATH class
                 if cath_class == 'Alpha':
                     self.recovery_alpha.append(recovery)
@@ -1265,8 +1209,6 @@ class MInterface(MInterface_base):
     
 
     def validation_step(self, batch, batch_idx):
-        # deepcopy batch
-        # batch_val = copy.deepcopy(batch)
         loss, recovery = self(batch)
         bc_gauss_struc_only_loss, bc_gauss_struc_only_recovery = self(batch, mode='validation_biochem_gauss')
         bc_masktoken_struc_only_loss, bc_masktoken_struc_only_recovery = self(batch, mode='validation_biochem_masktoken')
@@ -1297,8 +1239,6 @@ class MInterface(MInterface_base):
                 rmsd = rmsds[i]
                 tmscore = tmscores[i]
                 nssr_score = nssr_scores[i]
-                # surface_recovery = surface_recoveries[i]
-                # core_recovery = core_recoveries[i]
                 self.test_step_outputs.append({
                         "test_loss": loss,
                         "test_recovery": recovery,
@@ -1360,8 +1300,6 @@ class MInterface(MInterface_base):
             from src.models.UBC2_model import UBC2Model
             self.model = UBC2Model(params)
 
-        # self.model_device = next(self.model.parameters()).device
-
     def instancialize(self, Model, **other_args):
         """ Instancialize a model using the corresponding parameters
             from self.hparams dictionary. You can also input any args
@@ -1376,11 +1314,9 @@ class MInterface(MInterface_base):
         args1.update(other_args)
         return Model(**args1)
 
-
     def gi(self):
         with torch.enable_grad():
             print((torch.tensor(0., requires_grad=True)*2).requires_grad)
-
 
     def configure_optimizers(self):
         trainable_params = filter(lambda p: p.requires_grad, self.parameters())

@@ -1,9 +1,6 @@
-import datetime
 import os
 import sys
 sys.path.append(os.getcwd())
-# os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-# os.environ['NCCL_P2P_DISABLE'] = '1'
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -92,7 +89,6 @@ if __name__ == "__main__":
     trainer_config = {
         'devices': gpu_count,
         'num_nodes': 1,  # Number of nodes to use for distributed training
-        # "strategy": 'ddp_find_unused_parameters_true',
         'precision': 32,
         'accelerator': 'gpu',
         'callbacks': load_callbacks(args),
@@ -101,7 +97,6 @@ if __name__ == "__main__":
     trainer_opt = argparse.Namespace(**trainer_config)
     trainer_dict = vars(trainer_opt)
     trainer = Trainer(**trainer_dict)
-    # model.custom_test()
     # Perform testing
     if args.checkpoint_path:
         print(f"Resuming from checkpoint: {args.checkpoint_path}")

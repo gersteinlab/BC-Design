@@ -3,7 +3,6 @@ from torch.utils.data import DataLoader
 from src.interface.data_interface import DInterface_base
 import torch
 import os.path as osp
-from src.tools.utils import cuda
 
 class MyDataLoader(DataLoader):
     def __init__(self, dataset, model_name, batch_size=64, num_workers=8, *args, **kwargs):
