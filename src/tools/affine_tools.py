@@ -37,30 +37,6 @@ def rot_matmul(
             The product ab
     """
     return a@b
-    # def row_mul(i):
-    #     return torch.stack(
-    #         [
-    #             a[..., i, 0] * b[..., 0, 0]
-    #             + a[..., i, 1] * b[..., 1, 0]
-    #             + a[..., i, 2] * b[..., 2, 0],
-    #             a[..., i, 0] * b[..., 0, 1]
-    #             + a[..., i, 1] * b[..., 1, 1]
-    #             + a[..., i, 2] * b[..., 2, 1],
-    #             a[..., i, 0] * b[..., 0, 2]
-    #             + a[..., i, 1] * b[..., 1, 2]
-    #             + a[..., i, 2] * b[..., 2, 2],
-    #         ],
-    #         dim=-1,
-    #     )
-
-    # return torch.stack(
-    #     [
-    #         row_mul(0), 
-    #         row_mul(1), 
-    #         row_mul(2),
-    #     ], 
-    #     dim=-2
-    # )
 
 
 def rot_vec_mul(
@@ -78,15 +54,7 @@ def rot_vec_mul(
             [*, 3] rotated coordinates
     """
     return torch.einsum('...ij, ...j->...i', r, t)
-    # x, y, z = torch.unbind(t, dim=-1)
-    # return torch.stack(
-    #     [
-    #         r[..., 0, 0] * x + r[..., 0, 1] * y + r[..., 0, 2] * z,
-    #         r[..., 1, 0] * x + r[..., 1, 1] * y + r[..., 1, 2] * z,
-    #         r[..., 2, 0] * x + r[..., 2, 1] * y + r[..., 2, 2] * z,
-    #     ],
-    #     dim=-1,
-    # )
+
 
 @lru_cache(maxsize=None)
 def identity_rot_mats(
@@ -317,12 +285,6 @@ class Rotation:
             raise ValueError(
                 "Incorrectly shaped rotation matrix or quaternion"
             )
-
-        # # Force full-precision
-        # if(quats is not None):
-        #     quats = quats.to(dtype=torch.float32)
-        # if(rot_mats is not None):
-        #     rot_mats = rot_mats.to(dtype=torch.float32)
 
         if(quats is not None and normalize_quats):
             quats = quats / torch.linalg.norm(quats, dim=-1, keepdim=True)
@@ -865,9 +827,6 @@ class Rigid:
         if((rots.shape != trans.shape[:-1]) or
            (rots.device != trans.device)):
             raise ValueError("Rots and trans incompatible")
-
-        # # Force full precision. Happens to the rotations automatically.
-        # trans = trans.to(dtype=torch.float32)
 
         self._rots = rots
         self._trans = trans
@@ -1417,15 +1376,6 @@ def positional_embeddings(E_idx, num_embeddings=None):
     E = torch.cat((torch.cos(angles), torch.sin(angles)), -1)
     return E
 
-def positional_embeddings_transformer(d, num_embeddings=None):
-    # From https://github.com/jingraham/neurips19-graph-protein-design
-    frequency = torch.exp(
-        torch.arange(0, num_embeddings, 2, dtype=torch.float32, device=d.device)
-        * -(np.log(10000.0) / num_embeddings)
-    )
-    angles = d[:,:,:,None] * frequency[None,None,None,:]
-    E = torch.cat((torch.cos(angles), torch.sin(angles)), -1)
-    return E
 
 def get_interact_feats(T, T_ts, X, edge_idx, batch_id, num_rbf=16):
     device = X.device
@@ -1467,23 +1417,7 @@ def get_interact_feats(T, T_ts, X, edge_idx, batch_id, num_rbf=16):
 
     diffX_proj = T[:,None].invert()._rots.apply(diffX)
     V = decouple(diffX_proj).reshape(num_N, -1)
-    # V_prev = F.pad(diffX_proj[:-1],(0,0,0,0,1,0))
-    # V_current = diffX_proj
-    # V_next = F.pad(diffX[1:],(0,0,0,0,0,1))
-    # V_next2 = F.pad(diffX[2:],(0,0,0,0,0,2))
-
-    # # V_prev = T[:,None].invert()._rots.apply(F.pad(diffX[1:],(0,0,0,0,1,0)))
-    # # V_current = T[:,None].invert()._rots.apply(diffX)
-    # # V_next = T[:,None].invert()._rots.apply(F.pad(diffX[:-1],(0,0,0,0,0,1)))
-    # # V_next2 = T[:,None].invert()._rots.apply(F.pad(diffX[:-2],(0,0,0,0,0,2)))
-    # V = torch.cat([ decouple(V_prev).reshape(num_N, -1),
-    #                 decouple(V_current).reshape(num_N, -1),
-    #                 decouple(V_next).reshape(num_N, -1),
-    #                 decouple(V_next2).reshape(num_N, -1)
-    #                 ], dim=1)
     V[torch.isnan(V)] = 0
-
-
 
     '''X [N,4,3]: N个氨基酸, 每个氨基酸4个原子(N,CA,C,O), 3是原子的xyz坐标
         T [N]: N个局部坐标系
@@ -1501,59 +1435,4 @@ def get_interact_feats(T, T_ts, X, edge_idx, batch_id, num_rbf=16):
     E = torch.cat([diffE, E_quant, E_trans, pos_embed], dim=-1)
     return {'_V':V.to(torch.float), '_E':E.to(torch.float)}
 
-
-
-def get_interact_feats_transformer(T, T_ij, X, num_rbf=16):
-    def rbf_func(D, num_rbf):
-        shape = D.shape
-        D_min, D_max, D_count = 0., 20., num_rbf
-        D_mu = torch.linspace(D_min, D_max, D_count).to(D.device)
-        D_mu = D_mu.view([1]*(len(shape))+[-1])
-        D_sigma = (D_max - D_min) / D_count
-        D_expand = torch.unsqueeze(D, -1)
-        RBF = torch.exp(-((D_expand - D_mu) / D_sigma)**2)
-        return RBF
-
-    def decouple(U):
-        norm = U.norm(dim=-1, keepdim=True)
-        direct = U/(norm+1e-6)
-        rbf = rbf_func(norm[...,0], num_rbf)
-        return torch.cat([direct, rbf], dim=-1)
-    
-
-    B, L = X.shape[:2]
-    diffX = F.pad(X.reshape(-1,3).diff(dim=0), (0,0,1,0)).reshape(B, L, -1, 3)
-
-
-    V_prev = T[...,None].invert()._rots.apply(F.pad(diffX[:,1:],(0,0,0,0,1,0)))
-    V_current = T[...,None].invert()._rots.apply(diffX)
-    V_next = T[...,None].invert()._rots.apply(F.pad(diffX[:,:-1],(0,0,0,0,0,1)))
-    V_next2 = T[...,None].invert()._rots.apply(F.pad(diffX[:,:-2],(0,0,0,0,0,2)))
-    V = torch.cat([ decouple(V_prev).reshape(B, L, -1),
-                    decouple(V_current).reshape(B, L, -1),
-                    decouple(V_next).reshape(B, L, -1),
-                    decouple(V_next2).reshape(B, L, -1)
-                    ], dim=-1)
-    V[torch.isnan(V)] = 0
-
-
-
-    '''X [N,4,3]: N个氨基酸, 每个氨基酸4个原子(N,CA,C,O), 3是原子的xyz坐标
-        T [N]: N个局部坐标系
-    '''
-    X_local = T[...,None].invert().apply(X)
-    diffE = torch.cat([X_local[:,:,None].repeat(1,1,L,1,1),
-                       T_ij[...,None].apply(X_local[:,None].repeat(1,L,1,1,1))],
-                       dim=-2)
-    diffE = decouple(diffE).reshape(B,L,L, -1)
-    
-    pos = torch.arange(L, device=V.device)
-    pos = pos[None,...].repeat(B,1)
-    pos_embed = positional_embeddings_transformer(pos[:,:,None]-pos[None,:,:], 16)
-
-    E_quant = T_ij._rots._rot_mats.reshape(B,L,L,9)
-    E_trans = T_ij._trans
-    E_trans = decouple(E_trans).reshape(B,L,L,-1)
-    E = torch.cat([diffE, E_quant, E_trans, pos_embed], dim=-1)
-    return {'_V':V.to(torch.float), '_E':E.to(torch.float)}
 

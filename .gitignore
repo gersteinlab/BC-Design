@@ -142,6 +142,7 @@ src/models/configs/*.yaml
 !src/models/configs/UBC2Model.yaml
 
 src/tools/main_utils.py
+src/tools/config_utils.py
 src/tools/metrics.py
 src/tools/parser.py
 src/tools/utils.py
