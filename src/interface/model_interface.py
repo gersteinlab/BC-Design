@@ -12,21 +12,6 @@ class MInterface_base(pl.LightningModule):
         self.load_model()
         self.configure_loss()
         os.makedirs(os.path.join(self.hparams.res_dir, self.hparams.ex_name), exist_ok=True)
-        
-    def forward(self, input):
-        pass
-    
-    
-    def training_step(self, batch, batch_idx, **kwargs):
-        pass
-
-
-    def validation_step(self, batch, batch_idx):
-        pass
-
-    def test_step(self, batch, batch_idx):
-        # Here we just reuse the validation_step for testing
-        return self.validation_step(batch, batch_idx)
 
     def on_validation_epoch_end(self):
         # Make the Progress Bar leave there
@@ -42,9 +27,7 @@ class MInterface_base(pl.LightningModule):
                                                 T_max=self.hparams.steps_per_epoch*self.hparams.epoch,
                                                 eta_min=self.hparams.lr / 100)
         elif lr_scheduler == 'onecycle':
-            scheduler = lrs.OneCycleLR(optimizer, max_lr=self.hparams.lr, steps_per_epoch=self.hparams.steps_per_epoch, epochs=self.hparams.epoch, three_phase=False,
-                                    #    pct_start=0.5, div_factor=10
-                                      final_div_factor=1.,
+            scheduler = lrs.OneCycleLR(optimizer, max_lr=self.hparams.lr, steps_per_epoch=self.hparams.steps_per_epoch, epochs=self.hparams.epoch, three_phase=False, inal_div_factor=1.,
                                        )
         else:
             raise ValueError('Invalid lr_scheduler type!')
@@ -66,27 +49,4 @@ class MInterface_base(pl.LightningModule):
     def lr_scheduler_step(self, *args, **kwargs):
         scheduler = self.lr_schedulers()
         scheduler.step()
-        
-    
-    def configure_devices(self):
-        self.device = torch.device(self.hparams.device)
 
-    def configure_loss(self):
-        self.loss_function = nn.CrossEntropyLoss(reduction='none')
-        
-    def load_model(self):
-        self.model = None
-
-    def instancialize(self, Model, **other_args):
-        """ Instancialize a model using the corresponding parameters
-            from self.hparams dictionary. You can also input any args
-            to overwrite the corresponding value in self.hparams.
-        """
-        class_args = inspect.getargspec(Model.__init__).args[1:]
-        inkeys = self.hparams.keys()
-        args1 = {}
-        for arg in class_args:
-            if arg in inkeys:
-                args1[arg] = getattr(self.hparams, arg)
-        args1.update(other_args)
-        return Model(**args1)

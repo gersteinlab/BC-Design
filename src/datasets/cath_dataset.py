@@ -124,11 +124,6 @@ class CATHDatasetSurfProPiFoldDenseLarge(data.Dataset):
             with open(self.path + f'/cath42_pc_test.pkl', 'rb') as f:
                 return pickle.load(f)
 
-    def change_mode(self, mode):
-        self.mode = mode
-        self.metadata = self._load_metadata()
-        self.data_dict = self._load_data_dict()
-
     def __len__(self):
         return len(self.metadata)
     
