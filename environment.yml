@@ -1,4 +1,4 @@
-name: opencpdcopy-minimal
+name: bcdesign
 channels:
   - pytorch
   - conda-forge
@@ -20,9 +20,10 @@ dependencies:
   - pip=24.0
 
   - pip:
-      - torch-geometric==2.5.3  
-      - torch-cluster==1.6.3 # pip
-      - torch-scatter==2.1.2 # pip
+      - torch-scatter==2.1.2
+      - torch-cluster==1.6.3
+      - torch-geometric==2.5.3
+      - "-f https://data.pyg.org/whl/torch-2.3.0+cu121.html"
 
       - transformers==4.43.3 # pip
       - huggingface-hub==0.24.2 # pip

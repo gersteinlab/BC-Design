@@ -68,9 +68,8 @@ This section guides you through setting up the necessary environment and depende
 
 Before creating the Conda environment, please ensure your system meets the following requirements. While other versions might also work, our code was developed and tested using the specific versions listed below:
 
-1.  **CUDA Version:** This project requires **NVIDIA driver support for CUDA 12.1.1**.
-    * You can check your NVIDIA driver version by running `nvidia-smi`. Ensure it's compatible with CUDA 12.1.1. The Conda environment will install the specific CUDA toolkit, but your system's driver must be compatible.
-2.  **GCC Compiler:** A C/C++ compiler is needed, specifically **GCC version 12.2.0** or a compatible version.
+1.  **CUDA Version:** This codebase has been validated on **CUDA 12.8 with NVIDIA driver 570.133.20**, so running on that (or an equivalent, compatible setup) is recommended.
+2.  **GCC Compiler:** A C/C++ compiler is needed, specifically **GCC version 12.2.0** or a compatible version. This codebase has been validated on **GCC version 12.2.0**.
     * **Linux:** You can typically install GCC using your system's package manager. For example, on Debian/Ubuntu-based systems, you might use:
         ```shell
         sudo apt update
@@ -79,10 +78,11 @@ Before creating the Conda environment, please ensure your system meets the follo
         On other distributions, use the appropriate package manager (e.g., `yum`, `dnf`). You may need to configure your system to use this specific version if multiple GCC versions are installed.
     * **HPC Environments:** If you are using a High-Performance Computing (HPC) cluster, GCC is often managed via environment modules. You might load it using a command like:
         ```shell
-        module load gcc/12.2.0
+        module load GCC/12.2.0
         ```
         (The exact command may vary based on your HPC's module system.)
     * **Other Systems (macOS, Windows via WSL2):** Ensure you have a compatible C/C++ compiler. For macOS, Xcode Command Line Tools provide Clang, which is often compatible. For Windows, WSL2 with a Linux distribution is recommended.
+4.  **Reference OS:** Development and testing took place on **Red Hat Enterprise Linux 8.10 (Ootpa)**. Other modern Linux distributions should work fine as long as the CUDA/GCC requirements above are satisfied.
 
 ### Step 2: Create Conda Environment
 
@@ -99,12 +99,13 @@ Replace `[your-env-name]` with your preferred name for the Conda environment (e.
 
 ### Step 3: Download Data and Model Checkpoint
 
-To train the model or run inference with the pre-trained checkpoint, you need to download the necessary data and the model weights.
+To train the model, you need to download the preprocessed data.
+To test with the released model weights, you should also download the checkpoint.
 
-1.  Navigate to the OSF project page: [https://osf.io/pwbhg/files/osfstorage](https://osf.io/pwbhg/files/osfstorage)
+1.  Navigate to the Hugging Face project page: [https://huggingface.co/datasets/XinwuYe/BC-Design/tree/main](https://huggingface.co/datasets/XinwuYe/BC-Design/tree/main)
 2.  Download the following files into the `BC-Design` folder (the main directory cloned from GitHub):
-      * `data.zip` (contains data for training and inference)
-      * `UBC2Model.ckpt` (the pre-trained model checkpoint for inference)
+      * `data.zip` (contains data for training and testing)
+      * `UBC2Model.ckpt` (the checkpoint for testing, download it only when you want to test with the releases model weights)
 3.  Once downloaded, unzip the data file:
     ```shell
     unzip data.zip
@@ -113,38 +114,40 @@ To train the model or run inference with the pre-trained checkpoint, you need to
 
 As an alternative, you can also run the following commands:
 ```shell
-wget https://osf.io/download/xz34b/ -O UBC2Model.ckpt
-wget https://osf.io/download/683dd27930c7903aaf85b1f7/ -O data.zip
+wget https://huggingface.co/datasets/XinwuYe/BC-Design/resolve/main/data.zip?download=true -O data.zip
 unzip data.zip
+wget "https://huggingface.co/datasets/XinwuYe/BC-Design/resolve/main/UBC2Model.ckpt?download=true" -O UBC2Model.ckpt
 ````
 
-After completing these steps, your environment should be ready, and you'll have the necessary data and model checkpoint to proceed with using BC-Design.
+After completing these steps, your environment should be ready, and you'll have the necessary data (and model checkpoint) to proceed with using BC-Design.
 
 
 ## Getting Started
 
-**Model Inference**
+### Evaluation
 
-To run inference on the test set of CATH4.2:
+The `train/main_eval.py` script is used to evaluate the trained BC-Design model on test datasets. It loads the specified dataset and the model checkpoint (`UBC2Model.ckpt` by default) to perform inference and report evaluation metrics.
+
+Note: `train/main_eval.py` computes structure-level metrics via ESMFold. For very large proteins, ESMFold may run out of GPU memory and fall back to CPU-based structure prediction, which significantly increases runtime. The commands below include rough runtime estimates; TS50 is the fastest dataset to reproduce the evaluation.
+
+To test on the test set of CATH4.2:
 ```shell
-python train/main_eval.py --dataset CATH4.2
-# Expected output:
-# test_recovery                                 0.9025624394416809
-# test_tmscore                                  0.8511192798614502
-# and other metrics
+python train/main_eval.py --dataset CATH4.2 # ~3.5 hours on 1 A100 GPU
+# Expected output: many metrics
 ```
-To run inference on the test set of TS50, TS500, or AFDB2000:
+To test on TS50, TS500, or AFDB2000:
 ```shell
-python train/main_eval.py --dataset TS50
-python train/main_eval.py --dataset TS500
+python train/main_eval.py --dataset TS50 # ~2 mins on 1 A100 GPU
+python train/main_eval.py --dataset TS500 # ~9 hours on 1 A100 GPU
 python train/main_eval.py --dataset AFDB2000
 ```
-To run inference with backbone structure only:
+To test with backbone-structure-only inference:
 ```shell
-python python train/main_eval.py --if_struc_only True
+python train/main_eval.py --if_struc_only True --dataset CATH4.2
+python train/main_eval.py --if_struc_only True --dataset TS50 
+python train/main_eval.py --if_struc_only True --dataset TS500 
+python train/main_eval.py --if_struc_only True --dataset AFDB2000
 ```
-
-The `train/main_eval.py` script is used to evaluate the pre-trained BC-Design model on test datasets. It loads the specified dataset and the pre-trained model checkpoint (`UBC2Model.ckpt` by default) to perform inference and report evaluation metrics.
 
 **Key functionalities of `main_eval.py`:**
 -   **Dataset Selection:** You can specify the dataset for evaluation using the `--dataset` argument (e.g., `CATH4.2`, `TS50`, `TS500`, `AFDB2000`).
@@ -157,7 +160,11 @@ The `train/main_eval.py` script is used to evaluate the pre-trained BC-Design mo
     * `--num_workers`: Number of workers for data loading.
     * For a full list of arguments and their default values, you can refer to the `create_parser()` function within the `train/main_eval.py` script.
 
-This script initializes the data module (`DInterface`) and the model (`MInterface`) using PyTorch Lightning, then runs the `trainer.test()` method to perform the evaluation. The predicted protein sequences will be saved under `predicted_pdb/[ex_name]/[dataset]`.
+The predicted protein sequences will be saved under `predicted_pdb/[ex_name]/[dataset]`.
+
+### Training Model
+
+### Data Preparation
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
