@@ -176,6 +176,12 @@ python train/main.py --lr 0.00002 --lr_scheduler cosine --bc_mask_max_rate 3.0 -
 
 ### Data Preparation
 
+If you’d like to use BC-Design on your own data, run this command to convert your .pdb files into the format BC-Design expects:
+```shell
+python pdb2jsonpkl.py --pdb_folder [dir-of-pdb-files] --dataset_name [dataset-name]
+```
+After running it, the processed data will be saved in `.data/[dataset-name]`, and the `[dataset-name]` can be used directly as the `dataset` argument for `train/main_eval.py`.
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## License
