@@ -143,10 +143,11 @@ python train/main_eval.py --dataset AFDB2000
 ```
 To test with backbone-structure-only inference:
 ```shell
-python train/main_eval.py --if_struc_only True --dataset CATH4.2
-python train/main_eval.py --if_struc_only True --dataset TS50 
-python train/main_eval.py --if_struc_only True --dataset TS500 
-python train/main_eval.py --if_struc_only True --dataset AFDB2000
+python train/main_eval.py --if_struc_only True --dataset [dataset-name]
+```
+To test the model under partial-information settings (i.e., masking a chosen portion of the biochemical features):
+```shell
+python train/main_eval.py --exp_bc_mask_rate 0.6 --dataset [dataset-name] # mask 60% of biochemical features in the input
 ```
 
 **Key functionalities of `main_eval.py`:**
@@ -164,11 +165,13 @@ The predicted protein sequences will be saved under `predicted_pdb/[ex_name]/[da
 
 ### Training Model
 
+Run the following commamds to reproduce training BC-Design on the CATH 4.2 training set. The model checkpoint will be saved as `./train/results/UBC2ModelReproduced/checkpoints/last.ckpt`.
+
 ```shell
 python train/main.py --lr 0.001 --if_strucenc_only True --ex_name UBC2ModelStage1 # stage 1
 python train/main.py --lr 0.0005 --contrastive_learning True --contrastive_pretrain True --checkpoint_path "./train/results/UBC2ModelStage1/checkpoints/last.ckpt" --ex_name UBC2ModelStage2 # stage 2
 python train/main.py --lr 0.0005 --if_warmup_train True --checkpoint_path "./train/results/UBC2ModelStage2/checkpoints/last.ckpt" --ex_name UBC2ModelStage3 # stage 3
-python train/main.py --lr 0.00002 --lr_scheduler cosine --bc_mask_max_rate 3.0 --checkpoint_path "./train/results/UBC2ModelStage3/checkpoints/last.ckpt" --ex_name UBC2Model # stage 4
+python train/main.py --lr 0.00002 --lr_scheduler cosine --bc_mask_max_rate 3.0 --checkpoint_path "./train/results/UBC2ModelStage3/checkpoints/last.ckpt" --ex_name UBC2ModelReproduced # stage 4
 ```
 
 ### Data Preparation

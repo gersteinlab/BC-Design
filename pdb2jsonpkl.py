@@ -374,8 +374,26 @@ def main(dataset='afdb2000'):
 
 
 if __name__ == "__main__":
-    # Define paths for predicted and ground truth PDBs
-    pdb_folder = './data/antonia0830/pdbs'
+    parser = argparse.ArgumentParser(description="Convert PDB files to JSON/PKL datasets.")
+    parser.add_argument(
+        "--pdb_folder",
+        type=str,
+        default=None,
+        help="Directory containing the PDB files to process."
+    )
+    parser.add_argument(
+        "--dataset_name",
+        type=str,
+        default=None,
+        help="Name of the output dataset (defaults to the pdb_folder name)."
+    )
+    args = parser.parse_args()
+
+    if not args.pdb_folder:
+        raise ValueError("Please provide --pdb_folder pointing to the directory with PDB files.")
+
+    pdb_folder = args.pdb_folder
+    dataset_name = args.dataset_name or os.path.basename(os.path.normpath(pdb_folder))
     
     pdb_files = [f for f in os.listdir(pdb_folder) if f.endswith('.pdb')]
     data = []
@@ -384,18 +402,11 @@ if __name__ == "__main__":
     for pdb_file in tqdm(pdb_files, desc="Parsing PDBs"):
         predicted_path = os.path.join(pdb_folder, pdb_file)
 
-        # Call the new function that combines data from two PDBs
         combined_data = parse_pdb(predicted_path)
         
         if combined_data:
             data.append(combined_data)
 
-    # --- The rest of the script remains the same ---
-
-    # Create dataset name from the folder path
-    dataset_name = 'antonia0830'
-
-    # Create and save the initial JSON file
     output_data_dir = os.path.join('./data', dataset_name)
     os.makedirs(output_data_dir, exist_ok=True)
     json_output_path = os.path.join(output_data_dir, dataset_name + '.json')
@@ -404,6 +415,4 @@ if __name__ == "__main__":
         json.dump(data, json_file, indent=4)
     print(f"\nInitial JSON saved to: {json_output_path}")
 
-    # Call the main function to process JSON and create PKL
     main(dataset_name)
-    
