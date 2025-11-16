@@ -27,7 +27,7 @@ Xiangru Tang<sup>†</sup>, Xinwu Ye</sup>†</sup>, Fang Wu</sup>†</sup>, Dan
 
 ![image](./assets/BC-Design.png)
 
-## Introduction
+<!-- ## Introduction
 
 Inverse protein folding aims to design amino acid sequences that form specific 3D structures, which is crucial for protein engineering and drug development. Traditional approaches often neglect vital biochemical characteristics that impact protein function. BC-Design introduces a new approach that combines structural data and biochemical attributes, using a dual-encoder architecture for enhanced accuracy. This framework, which surpasses current methods in sequence recovery and structural precision, demonstrates strong generalization and performs well with complex protein features.
 
@@ -38,7 +38,7 @@ Inverse protein folding aims to design amino acid sequences that form specific 3
   - Outperforms traditional methods with high sequence recovery (88.37%) and low perplexity (1.47) on the CATH 4.2 benchmark.
   - Exhibits robust generalization across diverse protein sizes, complexity levels, and structural classes.
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+<p align="right">(<a href="#top">back to top</a>)</p> -->
 
 ## Overview
 
@@ -168,10 +168,30 @@ The predicted protein sequences will be saved under `predicted_pdb/[ex_name]/[da
 Run the following commamds to reproduce training BC-Design on the CATH 4.2 training set. The model checkpoint will be saved as `./train/results/UBC2ModelReproduced/checkpoints/last.ckpt`.
 
 ```shell
-python train/main.py --lr 0.001 --if_strucenc_only True --ex_name UBC2ModelStage1 # stage 1
-python train/main.py --lr 0.0005 --contrastive_learning True --contrastive_pretrain True --checkpoint_path "./train/results/UBC2ModelStage1/checkpoints/last.ckpt" --ex_name UBC2ModelStage2 # stage 2
-python train/main.py --lr 0.0005 --if_warmup_train True --checkpoint_path "./train/results/UBC2ModelStage2/checkpoints/last.ckpt" --ex_name UBC2ModelStage3 # stage 3
-python train/main.py --lr 0.00002 --lr_scheduler cosine --bc_mask_max_rate 3.0 --checkpoint_path "./train/results/UBC2ModelStage3/checkpoints/last.ckpt" --ex_name UBC2ModelReproduced # stage 4
+python train/main.py \
+  --lr 0.001 \
+  --if_strucenc_only True \
+  --ex_name UBC2ModelStage1  # stage 1
+  
+python train/main.py \
+  --lr 0.0005 \
+  --contrastive_learning True \
+  --contrastive_pretrain True \
+  --checkpoint_path "./train/results/UBC2ModelStage1/checkpoints/last.ckpt" \
+  --ex_name UBC2ModelStage2  # stage 2
+
+python train/main.py \
+  --lr 0.0005 \
+  --if_warmup_train True \
+  --checkpoint_path "./train/results/UBC2ModelStage2/checkpoints/last.ckpt" \
+  --ex_name UBC2ModelStage3  # stage 3
+
+python train/main.py \
+  --lr 0.00002 \
+  --lr_scheduler cosine \
+  --bc_mask_max_rate 3.0 \
+  --checkpoint_path "./train/results/UBC2ModelStage3/checkpoints/last.ckpt" \
+  --ex_name UBC2ModelReproduced  # stage 4
 ```
 
 ### Data Preparation
