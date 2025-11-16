@@ -1,4 +1,4 @@
-# BC-Design: A Biochemistry-Aware Framework for High-Precision Inverse Protein Folding
+# BC-Design: A Biochemistry-Aware Framework for Inverse Protein Design
 <p align="left">
       <a href='https://www.biorxiv.org/content/10.1101/2024.10.28.620755v2'><img src='https://img.shields.io/badge/BC Design-arXiv-d63031?logo=arxiv&logoColor=white'></a>
 <a href="https://github.com/gersteinlab/BC-Design/blob/public-release/LICENSE" alt="license">
@@ -16,7 +16,7 @@
 
 This repository contains the implementation code for the paper:
 
-[**BC-Design: A Biochemistry-Aware Framework for High-Precision Inverse Protein Folding**]
+[**BC-Design: A Biochemistry-Aware Framework for Inverse Protein Design**]
 
 Xiangru Tang<sup>†</sup>, Xinwu Ye</sup>†</sup>, Fang Wu</sup>†</sup>, Daniel Shao, Yin Fang, Siming Chen, Dong Xu, and Mark Gerstein.
 
