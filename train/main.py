@@ -43,7 +43,7 @@ def create_parser():
     parser.add_argument('--data_root', default='./data/')
     
     # Training parameters
-    parser.add_argument('--epoch', default=20, type=int, help='end epoch')
+    parser.add_argument('--epoch', default=50, type=int, help='end epoch')
     parser.add_argument('--augment_eps', default=0.0, type=float, help='noise level')
 
     # Model parameters
@@ -54,9 +54,13 @@ def create_parser():
     parser.add_argument('--checkpoint_path', default=None, type=str, help='Path to a checkpoint to resume training')
 
     parser.add_argument('--contrastive_pretrain', default=False, type=bool)
+    parser.add_argument('--contrastive_learning', default=False, type=bool)
+    parser.add_argument('--if_strucenc_only', default=False, type=bool)
+    parser.add_argument('--if_warmup_train', default=False, type=bool)
 
     parser.add_argument('--if_struc_only', default=False, type=bool)
     parser.add_argument('--exp_bc_mask_rate', default=0., type=float)
+    parser.add_argument('--bc_mask_max_rate', default=0., type=float)
     parser.add_argument('--exp_backbone_noise_sd', default=0., type=float)
 
     parser.add_argument('--partial_design', default=False, type=bool)

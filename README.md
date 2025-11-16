@@ -164,6 +164,13 @@ The predicted protein sequences will be saved under `predicted_pdb/[ex_name]/[da
 
 ### Training Model
 
+```shell
+python train/main.py --lr 0.001 --if_strucenc_only True --ex_name UBC2ModelStage1 # stage 1
+python train/main.py --lr 0.0005 --contrastive_learning True --contrastive_pretrain True --checkpoint_path "./train/results/UBC2ModelStage1/checkpoints/last.ckpt" --ex_name UBC2ModelStage2 # stage 2
+python train/main.py --lr 0.0005 --if_warmup_train True --checkpoint_path "./train/results/UBC2ModelStage2/checkpoints/last.ckpt" --ex_name UBC2ModelStage3 # stage 3
+python train/main.py --lr 0.00002 --lr_scheduler cosine --bc_mask_max_rate 3.0 --checkpoint_path "./train/results/UBC2ModelStage3/checkpoints/last.ckpt" --ex_name UBC2Model # stage 4
+```
+
 ### Data Preparation
 
 <p align="right">(<a href="#top">back to top</a>)</p>

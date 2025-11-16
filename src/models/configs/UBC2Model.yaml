@@ -2,18 +2,18 @@ res_dir: ./train/results
 ex_name: UBC2Model
 dataset: CATH4.2
 model_name: UBC2Model
-lr: 0.0002
-lr_scheduler: onecycle
+# lr: 0.0002
+# lr_scheduler: onecycle
 # lr_scheduler: cosine
 offline: 0
 seed: 112
 pretrained_path: ''
-batch_size: 1
+batch_size: 2
 accumulate_grad_batches: 1
 num_workers: 0
 min_length: 40
 data_root: ./data/
-epoch: 50
+# epoch: 50
 augment_eps: 0.0
 geo_layer: 3
 attn_layer: 3
@@ -27,19 +27,12 @@ virtual_atom_num: 24
 bc_encoder_layer: 2
 
 mask_rate: 0.1
-bc_mask_max_rate: .0
 bc_mask_how: token
 modal_mask_ratio: 0.
 
-contrastive_learning: false
-contrastive_pretrain: false
 contrastive_pretrain_both: false
-contrastive_loss_global_alpha: 1.
+contrastive_loss_global_alpha: 0.01
 contrastive_loss_local_alpha: 1.
 
 if_struc_only: false
-if_strucenc_only: false
-
-if_warmup_train: false
-
-checkpoint_path: "./UBC2Model.ckpt"
+# checkpoint_path: "./UBC2Model.ckpt"
