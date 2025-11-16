@@ -158,7 +158,6 @@ if __name__ == "__main__":
         "strategy": 'ddp_find_unused_parameters_true',
         'precision': 32,
         'accelerator': 'gpu',  # Use distributed data parallel
-        'limit_train_batches': 10,
         'callbacks': load_callbacks(args),
         'logger': plog.WandbLogger(
                     project = 'BC-Design',
