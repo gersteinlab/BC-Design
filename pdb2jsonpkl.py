@@ -12,6 +12,7 @@ from Bio.SeqUtils import seq1
 from Bio.PDB.Polypeptide import is_aa
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 import warnings
+import argparse
 
 # Suppress PDBConstructionWarning
 warnings.simplefilter('ignore', PDBConstructionWarning)
