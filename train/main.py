@@ -164,8 +164,7 @@ if __name__ == "__main__":
                     name=args.ex_name,
                     save_dir=str(os.path.join(args.res_dir, args.ex_name)),
                     offline = args.offline,
-                    id = "_".join(args.ex_name.split("/")),
-                    entity = "BC-Design"),
+                    id = "_".join(args.ex_name.split("/")),),
         'gradient_clip_val':1.0
     }
 

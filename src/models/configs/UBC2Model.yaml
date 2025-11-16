@@ -5,7 +5,7 @@ model_name: UBC2Model
 # lr: 0.0002
 # lr_scheduler: onecycle
 # lr_scheduler: cosine
-offline: 0
+offline: 1
 seed: 112
 pretrained_path: ''
 batch_size: 2
