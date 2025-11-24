@@ -57,6 +57,7 @@ Inverse protein folding aims to design amino acid sequences that form specific 3
 
 ## News and Updates
 
+- [🆕 2025-11-23] Added backbone-only (BC-Backbone-Only) inference pipeline and scripts.
 - [🚀 2024-10-30] The official code is released.
 
 
