@@ -18,7 +18,7 @@ This repository contains the implementation code for the paper:
 
 [**BC-Design: A Biochemistry-Aware Framework for Inverse Protein Design**]
 
-Xiangru Tang<sup>†</sup>, Xinwu Ye</sup>†</sup>, Fang Wu</sup>†</sup>, Daniel Shao, Yin Fang, Siming Chen, Dong Xu, and Mark Gerstein.
+Xiangru Tang<sup>†</sup>, Xinwu Ye<sup>†</sup>, Fang Wu<sup>†</sup>, Yimeng Liu, Anna Su, Antonia Panescu, Guanlue Li, Daniel Shao, Dong Xu, and Mark Gerstein<sup>*</sup>.
 
 <sup>†</sup> Equal contribution
 
