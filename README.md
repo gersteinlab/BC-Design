@@ -125,7 +125,7 @@ After completing these steps, your environment should be ready, and you'll have 
 
 ## Getting Started
 
-### Evaluation
+### Evaluate on CATH 4.2:
 
 The `train/main_eval.py` script is used to evaluate the trained BC-Design model on test datasets. It loads the specified dataset and the model checkpoint (`UBC2Model.ckpt` by default) to perform inference and report evaluation metrics.
 
