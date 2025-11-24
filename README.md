@@ -57,7 +57,11 @@ Inverse protein folding aims to design amino acid sequences that form specific 3
 
 ## News and Updates
 
-- [🆕 2025-11-23] Added backbone-only (BC-Backbone-Only) inference pipeline and scripts.
+- [🆕 2025-11-23] Major updates:
+  - Implemented a complete **backbone-only inference pipeline**.
+  - Added **partial-information testing** script with controllable biochemical-feature masking (0–100% masking), enabling tunable recovery–diversity trade-offs.
+  - Added full **PDB preprocessing utilities** (`pdb2jsonpkl.py`) to convert arbitrary protein structures into the BC-Design input format.
+  - Cleaned and consolidated training/evaluation code, environment files, and documentation.
 - [🚀 2024-10-30] The official code is released.
 
 
@@ -146,15 +150,24 @@ python train/main_eval.py --dataset TS500 # ~9 hours on 1 A100 GPU
 python train/main_eval.py --dataset AFDB2000
 ```
 
-**Backbone-only inference:*
+**Testing in backbone-only setting:**
+
+BC-Design now includes a complete **structure-only inference mode**, 
+which uses *only* backbone coordinates as input and excludes all biochemical features.
 
 ```shell
 python train/main_eval.py --if_struc_only True --dataset [dataset-name]
 ```
-To test the model under partial-information settings (i.e., masking a chosen portion of the biochemical features):
+
+**Testing in partial-information setting:**
+
+BC-Design supports biochemical-feature masking, enabling controlled removal of biochemical information at inference time.
+
+Example (mask 60% of biochemical feature points):
 ```shell
 python train/main_eval.py --exp_bc_mask_rate 0.6 --dataset [dataset-name] # mask 60% of biochemical features in the input
 ```
+This mechanism allows users to reproduce intermediate recovery–diversity trade-offs.
 
 **Key functionalities of `main_eval.py`:**
 -   **Dataset Selection:** You can specify the dataset for evaluation using the `--dataset` argument (e.g., `CATH4.2`, `TS50`, `TS500`, `AFDB2000`).
