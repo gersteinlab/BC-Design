@@ -132,17 +132,22 @@ The `train/main_eval.py` script is used to evaluate the trained BC-Design model 
 Note: `train/main_eval.py` computes structure-level metrics via ESMFold. For very large proteins, ESMFold may run out of GPU memory and fall back to CPU-based structure prediction, which significantly increases runtime. The commands below include rough runtime estimates; TS50 is the fastest dataset to reproduce the evaluation.
 
 To test on the test set of CATH4.2:
+
 ```shell
 python train/main_eval.py --dataset CATH4.2 # ~3.5 hours on 1 A100 GPU
 # Expected output: many metrics
 ```
+
+
 To test on TS50, TS500, or AFDB2000:
 ```shell
 python train/main_eval.py --dataset TS50 # ~2 mins on 1 A100 GPU
 python train/main_eval.py --dataset TS500 # ~9 hours on 1 A100 GPU
 python train/main_eval.py --dataset AFDB2000
 ```
-To test with backbone-structure-only inference:
+
+**Backbone-only inference:*
+
 ```shell
 python train/main_eval.py --if_struc_only True --dataset [dataset-name]
 ```
